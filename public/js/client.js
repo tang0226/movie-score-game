@@ -449,7 +449,7 @@ function updateProgressBar() {
       (t / listenTime * 100).toString() + "%";
 
     if (t > listenTime) {
-      if (guessesLeft && !gotCorrect) {
+      if (guessesLeft && !gotCorrect && !playerDQed) {
         roundResults.push({
           player: {
             id: playerId,
@@ -597,15 +597,17 @@ quitButton.addEventListener("click", function() {
 });
 
 // DQing
-/*window.addEventListener("blur", function() {
+window.addEventListener("blur", function() {
   console.log("blur!", performance.now());
   if (roundInProgress && !playerDone) {
     playerDone = true;
     playerDQed = true;
-    logMessage("You cannot leave the page during a round.", "error");
+    logMessage("You cannot leave the page during a round. You have been disqualified.", "error");
+    // Update the guesses left status message to display the DQ
     updateGuessesLeft();
+    sendDQ();
   }
-});*/
+});
 
 document.addEventListener("keydown", function(event) {
   if (!event.key) {
@@ -615,11 +617,18 @@ document.addEventListener("keydown", function(event) {
     if (roundInProgress && !playerDone) {
       playerDone = true;
       playerDQed = true;
-      logMessage("No audio or media keys allowed!", "error");
+      logMessage("No audio or media keys allowed! You have been disqualified.", "error");
       updateGuessesLeft();
+      sendDQ();
     }
   }
 });
+
+function sendDQ() {
+  if (roundInProgress) {
+    socket.emit("disqualified", getElapsedSongTime, guessesLeft);
+  }
+}
 
 
 // Socket events
@@ -808,6 +817,20 @@ socket.on("player timed out", (player, guessesLeft) => {
     time: listenTime,
   });
   logMessage(`${player.name} timed out.`, "error");
+  console.log(roundResults);
+});
+
+socket.on("player disqualified", (player, ms, guessesLeft) => {
+  roundResults.push({
+    player: {
+      id: player.id,
+      name: player.name,
+    },
+    result: "disqualified",
+    guessesLeft: guessesLeft,
+    time: ms,
+  });
+  logMessage(`${player.name} was disqualified.`, "error");
   console.log(roundResults);
 });
 

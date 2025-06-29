@@ -321,6 +321,28 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on("disqualified", (ms, guessesLeft) => {
+    let player = playersById[ID];
+    if (!player) return;
+    let game = gamesById[player.gameId];
+    if (!game) return;
+
+    console.log(player.name, "disqualified");
+
+    game.roundResults.push({
+      player: player,
+      result: "disqualified",
+      guessesLeft: guessesLeft,
+      time: ms,
+    });
+
+    for (let p of game.players) {
+      if (p.id != ID) {
+        io.to(p.id).emit("player disqualified", player, ms, guessesLeft);
+      }
+    }
+  });
+
   // Client disconnected
   socket.on('disconnect', () => {
     let player = playersById[ID];
