@@ -425,12 +425,24 @@ function countDown(time, callback, ...args) {
 function updateProgressBar() {
   if (songPlaying) {
     let t = getElapsedSongTime();
-    if (t > listenTime) {
-      endRound();
-    }
 
     progressBar.style.width =
       (t / listenTime * 100).toString() + "%";
+
+    if (t > listenTime) {
+      if (guessesLeft && !gotCorrect) {
+        roundResults.push({
+          player: playerId,
+          result: "timeout",
+          guessesLeft: guessesLeft,
+          time: listenTime,
+        });
+        logMessage("You timed out.", "error");
+        socket.emit("timed out.", guessesLeft);
+        console.log(roundResults);
+      }
+      endRound();
+    }
   }
 }
 
@@ -563,7 +575,7 @@ quitButton.addEventListener("click", function() {
 });
 
 // DQing
-window.addEventListener("blur", function() {
+/*window.addEventListener("blur", function() {
   console.log("blur!", performance.now());
   if (roundInProgress && !playerDone) {
     playerDone = true;
@@ -571,7 +583,7 @@ window.addEventListener("blur", function() {
     logMessage("You cannot leave the page during a round.", "error");
     updateGuessesLeft();
   }
-});
+});*/
 
 document.addEventListener("keydown", function(event) {
   if (!event.key) {
@@ -743,6 +755,17 @@ socket.on("player guessed correctly", (player, ms, guessesLeft) => {
     time: ms / 1000,
   });
   logMessage(`${player.name}: ${formatMs(ms)}s`, "success");
+  console.log(roundResults);
+});
+
+socket.on("player timed out", (player, guessesLeft) => {
+  roundResults.push({
+    player: player.id,
+    result: "timeout",
+    guessesLeft: guessesLeft,
+    time: listenTime,
+  });
+  logMessage(`${player.name} timed out`, "error");
   console.log(roundResults);
 });
 

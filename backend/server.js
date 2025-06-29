@@ -281,6 +281,27 @@ io.on('connection', (socket) => {
     console.log("Round result:", game.roundResults[game.roundResults.length - 1]);
   });
 
+  // Players timer expired without a correct guess
+  socket.on("timed out", (guessesLeft) => {
+    let player = playersById[ID];
+    if (!player) return;
+    let game = gamesById[player.gameId];
+    if (!game) return;
+
+    game.roundResults.push({
+      player: ID,
+      result: "timeout",
+      guessesLeft: guessesLeft,
+      time: game.settings.listenTime,
+    });
+
+    for (let p of game.players) {
+      if (p.id != ID) {
+        io.to(p.id).emit("player timed out", player, guessesLeft);
+      }
+    }
+  });
+
   // Client disconnected
   socket.on('disconnect', () => {
     let player = playersById[ID];
