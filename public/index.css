@@ -1,0 +1,260 @@
+:root {
+  --tile-size: 100px;
+  --columns: 5;
+  --log-text-info: black;
+  --log-text-success: rgb(0, 143, 36);
+  --log-text-error: rgb(201, 0, 0);
+}
+
+
+body {
+  margin: 0px;
+  font-family: sans-serif;
+}
+
+button {
+  color: black;
+  font-size: 1.5em;
+  height: 50px;
+  border-radius: 25px;
+  background-color: gray;
+  border: none;
+}
+
+button:hover {
+  background-color: rgb(175, 175, 175);
+}
+
+button:active {
+  background-color: rgb(200, 200, 200);
+}
+
+progress {
+  width: 400px;
+  height: 30px;
+}
+
+input[type="text"] {
+  font-size: 1.2em;
+  background-color: #00000000;
+}
+
+select {
+  background-color: #00000000;
+}
+
+
+#main-container {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+#intro-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#game-view {
+  display: grid;
+  grid-template-columns: minmax(100px, 20vw) minmax(100px, 60vw) minmax(100px, 20vw);
+  grid-template-rows: 50px calc(100vh - 50px);
+}
+
+#game-header {
+  grid-row: 1;
+  grid-column: 1 / 4;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  border-bottom: 1px solid gray;
+}
+
+#game-header-text {
+  font-size: 45px;
+}
+
+/*#quit-button {
+  margin-right: auto;
+}*/
+
+#player-list {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+#game-ui {
+  grid-row: 2;
+  grid-column: 2;
+  border-right: 1px solid gray;
+  border-left: 1px solid gray;
+
+  padding: 20px 50px 50px 50px;
+
+  overflow-y: auto;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#log {
+  grid-row: 2;
+  grid-column: 3;
+  text-wrap: wrap;
+}
+
+#log > div {
+  margin: 5px;
+  font-size: 1.2em;
+}
+
+#settings-section {
+  text-align: center;
+}
+
+#gameplay-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#yt-player {
+  display: none;
+}
+
+#tiles-section {
+  width: 90%;
+  min-width: 250px;
+  max-width: 1000px;
+
+  height: auto;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-bottom: 10px;
+
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#progress-bar {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  border: 2px solid black;
+}
+
+#progress-bar > div {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 0px;
+  height: inherit;
+  background-color: skyblue;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.text {
+  font-size: 1.5em;
+}
+
+.small-text {
+  font-size: 1em;
+}
+
+.intro-header {
+  font-size: 4em;
+  line-height: 0.5em;
+}
+
+.space {
+  height: 10px;
+}
+
+.inline {
+  display: inline;
+}
+
+
+.player-card {
+  position: relative;
+  border: 1px solid gray;
+  width: inherit;
+  margin-bottom: 5px;
+}
+
+.player-card-content {
+  width: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  cursor: pointer;
+  position: relative;
+}
+
+.tile-image {
+  width: var(--tile-size);
+  height: var(--tile-size);
+}
+
+.tile-overlay {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.2em;
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+
+  color: rgba(0, 0, 0, 0);
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: var(--tile-size);
+  height: var(--tile-size);
+  z-index: 1;
+}
+
+.tile-overlay:hover {
+  color: rgb(0, 0, 0);
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.tile-overlay:active {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.tile-overlay-guessed {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.tile-overlay-incorrect {
+  background: url("images/tile-x.png");
+  background-size: var(--tile-size);
+}
+
+.tile-overlay-correct {
+  background: url("images/tile-check.png");
+  background-size: var(--tile-size);
+}

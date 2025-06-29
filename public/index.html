@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>title</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div id="main-container">
+    <div id="intro-view">
+      <div id="intro-section">
+        <h1 class="intro-header">ScoreGame</h1>
+        <div>
+          <div class="text inline">Name: </div>
+          <input type="text" id="name" placeholder=""/>
+        </div>
+        <div class="space"></div>
+        <div>
+          <div class="text inline">Game ID: </div>
+          <input type="text" id="game-id" placeholder=""/>
+        </div>
+        <div class="space"></div>
+        <div>
+          <button id="create-game" class="inline">Create Game</button>
+          <button id="join-game">Join Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="game-view" class="hidden">
+      <div id="game-header">
+        <div id="game-header-text">ScoreGame</div>
+        <button id="quit-button">Quit</button>
+      </div>
+      <div id="player-list"></div>
+      <div id="game-ui">
+        <div id="settings-section">
+          <div>
+            <div>
+              <span class="text">Ending condition: </span>
+              <span>
+                <input id="rounds-input" type="text" class="inline" size="4"/>
+                <input id="points-input" type="text" class="inline hidden" size="4"/>
+                <select id="game-end-type" class="text">
+                  <option value="rounds">rounds</option>
+                  <option vlaue="points">points</option>
+                </select>
+              </span>
+            </div>
+
+            <div>
+              <span class="text">Listen time: </span>
+              <select id="listen-time-input" class="text">
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+                <option value="60">60</option>
+                <option value="90">90</option>
+                <option value="120">120</option>
+                <option value="180">180</option>
+              </select>
+            </div>
+
+            <div>
+              <span class="text">Guesses: </span>
+              <select id="guesses-input" class="text">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+              </select>
+            </div>
+
+            <div class="space"></div>
+            <button id="start-game">Start</button>
+          
+          </div>
+        </div>
+
+        <div id="gameplay-section" class="hidden">
+          <div id="yt-player"></div>
+          <div id="countdown" class="text"></div>
+          <div id="progress-bar">
+            <div></div>
+          </div>
+          <div class="text">
+            Vol. <input id="volume-slider" type="range" value="25"/>
+          </div>
+          <div class="space"></div>
+          <div class="text">
+            Guesses left: <span id="guesses-left"></span>
+          </div>
+          <div class="space"></div>
+          <button id="next">Next</button>
+          <div class="space"></div>
+          <div id="tiles-section"></div>
+        </div>
+      </div>
+      <div id="log">
+        <div>Welcome to ScoreGame!</div>
+      </div>
+    </div>
+
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/client.js"></script>
+</body>
+</html>

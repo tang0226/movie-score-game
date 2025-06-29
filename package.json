@@ -1,0 +1,15 @@
+{
+  "name": "movie-score-game-node",
+  "version": "1.0.0",
+  "description": "Movie score guessing game made with Node, Express, and Socket.io",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./backend/server.js"
+  },
+  "author": "tang0226",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  }
+}
