@@ -314,10 +314,19 @@ function initTilesSection(m) {
             logMessage(`You guessed correctly in: ${s}s`, "success");
           }
           else {
+            let time = getElapsedSongTime();
             overlayEle.classList.add("tile-overlay-incorrect");
             wrongGuessIds.push(guessOverlayId);
             if (guessesLeft == 0) {
               playerDone = true;
+              roundResults.push({
+                player: playerId,
+                result: "ran out of guesses",
+                guessesLeft: 0,
+                time: time,
+              });
+              logMessage(`You ran out of guesses.`, "error");
+              socket.emit("ran out of guesses", time);
             }
           }
         }
@@ -438,7 +447,7 @@ function updateProgressBar() {
           time: listenTime,
         });
         logMessage("You timed out.", "error");
-        socket.emit("timed out.", guessesLeft);
+        socket.emit("timed out", guessesLeft);
         console.log(roundResults);
       }
       endRound();
@@ -758,6 +767,17 @@ socket.on("player guessed correctly", (player, ms, guessesLeft) => {
   console.log(roundResults);
 });
 
+socket.on("player ran out of guesses", (player, ms) => {
+  roundResults.push({
+    player: player.id,
+    result: "ran out of guesses",
+    guessesLeft: 0,
+    time: ms,
+  });
+  logMessage(`${player.name} ran out of guesses.`, "error");
+  console.log(roundResults);
+});
+
 socket.on("player timed out", (player, guessesLeft) => {
   roundResults.push({
     player: player.id,
@@ -765,7 +785,7 @@ socket.on("player timed out", (player, guessesLeft) => {
     guessesLeft: guessesLeft,
     time: listenTime,
   });
-  logMessage(`${player.name} timed out`, "error");
+  logMessage(`${player.name} timed out.`, "error");
   console.log(roundResults);
 });
 

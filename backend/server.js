@@ -281,6 +281,27 @@ io.on('connection', (socket) => {
     console.log("Round result:", game.roundResults[game.roundResults.length - 1]);
   });
 
+  // Player runs out of guesses before timer expires
+  socket.on("ran out of guesses", (time) => {
+    let player = playersById[ID];
+    if (!player) return;
+    let game = gamesById[player.gameId];
+    if (!game) return;
+
+    game.roundResults.push({
+      player: ID,
+      result: "ran out of guesses",
+      guessesLeft: 0,
+      time: time,
+    });
+
+    for (let p of game.players) {
+      if (p.id != ID) {
+        io.to(p.id).emit("player ran out of guesses", player, time);
+      }
+    }
+  });
+
   // Players timer expired without a correct guess
   socket.on("timed out", (guessesLeft) => {
     let player = playersById[ID];
