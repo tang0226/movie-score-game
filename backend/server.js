@@ -254,7 +254,7 @@ io.on('connection', (socket) => {
       song: song,
       startSeconds: startSeconds,
       endSeconds: startSeconds + listenTime,
-      time: listenTime,
+      timeMs: listenTime * 1000,
     });
   });
 
@@ -266,10 +266,10 @@ io.on('connection', (socket) => {
     if (!game) return;
 
     game.roundResults.push({
-      player: ID,
+      player: player,
       result: "correct",
       guessesLeft: guessesLeft,
-      time: ms / 1000,
+      time: ms,
     });
 
     for (let p of game.players) {
@@ -277,27 +277,25 @@ io.on('connection', (socket) => {
         io.to(p.id).emit("player guessed correctly", player, ms, guessesLeft);
       }
     }
-
-    console.log("Round result:", game.roundResults[game.roundResults.length - 1]);
   });
 
   // Player runs out of guesses before timer expires
-  socket.on("ran out of guesses", (time) => {
+  socket.on("ran out of guesses", (ms) => {
     let player = playersById[ID];
     if (!player) return;
     let game = gamesById[player.gameId];
     if (!game) return;
 
     game.roundResults.push({
-      player: ID,
+      player: player,
       result: "ran out of guesses",
       guessesLeft: 0,
-      time: time,
+      time: ms,
     });
 
     for (let p of game.players) {
       if (p.id != ID) {
-        io.to(p.id).emit("player ran out of guesses", player, time);
+        io.to(p.id).emit("player ran out of guesses", player, ms);
       }
     }
   });
@@ -310,10 +308,10 @@ io.on('connection', (socket) => {
     if (!game) return;
 
     game.roundResults.push({
-      player: ID,
+      player: player,
       result: "timeout",
       guessesLeft: guessesLeft,
-      time: game.settings.listenTime,
+      time: game.settings.listenTime * 1000,
     });
 
     for (let p of game.players) {

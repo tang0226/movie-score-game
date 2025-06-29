@@ -299,7 +299,10 @@ function initTilesSection(m) {
             
             socket.emit("correct guess", ms, guessesLeft);
             roundResults.push({
-              player: playerId,
+              player: {
+                id: playerId,
+                name: playerName,
+              },
               result: "correct",
               guessesLeft: guessesLeft,
               time: ms / 1000,
@@ -320,13 +323,17 @@ function initTilesSection(m) {
             if (guessesLeft == 0) {
               playerDone = true;
               roundResults.push({
-                player: playerId,
+                player: {
+                  id: playerId,
+                  name: playerName,
+                },
                 result: "ran out of guesses",
                 guessesLeft: 0,
                 time: time,
               });
               logMessage(`You ran out of guesses.`, "error");
               socket.emit("ran out of guesses", time);
+              console.log(roundResults);
             }
           }
         }
@@ -371,7 +378,6 @@ function resetRoundVariables() {
   listenTime = null;
   gotCorrect = null;
   guessesLeft = null;
-  roundResults = [];
 }
 
 function resetTiles() {
@@ -390,6 +396,10 @@ function resetTiles() {
 
 // Preps the round and begins the countdown to play the song
 function startRound() {
+  
+  // Reset the round results;
+  roundResults = [];
+
   roundInProgress = true;
 
   gotCorrect = false;
@@ -441,7 +451,10 @@ function updateProgressBar() {
     if (t > listenTime) {
       if (guessesLeft && !gotCorrect) {
         roundResults.push({
-          player: playerId,
+          player: {
+            id: playerId,
+            name: playerName,
+          },
           result: "timeout",
           guessesLeft: guessesLeft,
           time: listenTime,
@@ -758,7 +771,10 @@ socket.on("game started", (game) => {
 
 socket.on("player guessed correctly", (player, ms, guessesLeft) => {
   roundResults.push({
-    player: player.id,
+    player: {
+      id: player.id,
+      name: player.name,
+    },
     result: "correct",
     guessesLeft: guessesLeft,
     time: ms / 1000,
@@ -769,7 +785,10 @@ socket.on("player guessed correctly", (player, ms, guessesLeft) => {
 
 socket.on("player ran out of guesses", (player, ms) => {
   roundResults.push({
-    player: player.id,
+    player: {
+      id: player.id,
+      name: player.name,
+    },
     result: "ran out of guesses",
     guessesLeft: 0,
     time: ms,
@@ -780,7 +799,10 @@ socket.on("player ran out of guesses", (player, ms) => {
 
 socket.on("player timed out", (player, guessesLeft) => {
   roundResults.push({
-    player: player.id,
+    player: {
+      id: player.id,
+      name: player.name,
+    },
     result: "timeout",
     guessesLeft: guessesLeft,
     time: listenTime,
@@ -804,7 +826,7 @@ socket.on("movie data", (data) => {
 socket.on("next round", (data) => {
   round++;
 
-  listenTime = data.time * 1000;
+  listenTime = data.timeMs;
   currMovie = data.movie;
   currSong = data.song;
 
