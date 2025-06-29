@@ -564,7 +564,7 @@ volumeSlider.addEventListener("change", function() {
 
 quitButton.addEventListener("click", function() {
   if (quitButtonActive && joinedGame) {
-    socket.emit("quit game");
+    socket.emit("leave game");
 
     // Switch to the intro view
     hideEle(gameView);
@@ -727,8 +727,8 @@ socket.on("player joined game", (player) => {
   logMessage(`${player.name} joined the game.`);
 });
 
-// when another player quits the game
-socket.on("player quit game", (player) => {
+// when another player leaves the game
+socket.on("player left game", (player) => {
   playerList.removeChild(document.getElementById(getPlayerCardId(player.id)));
   players = players.filter((p) => p.id != player.id);
   logMessage(`${player.name} left the game.`);

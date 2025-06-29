@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
   });
 
   // Game quitted
-  socket.on("quit game", () => {
+  socket.on("leave game", () => {
     let player = playersById[ID];
     if (!player) return;
 
@@ -169,7 +169,7 @@ io.on('connection', (socket) => {
     // the quitting user does not get messaged
     socket.leave(roomId);
 
-    io.to(roomId).emit("player quit game", player);
+    io.to(roomId).emit("player left game", player);
 
     // Delete game if no players left
     if (game.players.length == 0) {
@@ -361,12 +361,18 @@ io.on('connection', (socket) => {
       // socket should leave the room
       socket.leave(getRoomId(game.id));
 
+      io.to(getRoomId(game.id)).emit("player left game", player);
+
+      // Delete game if no players left
       if (game.players.length == 0) {
-        // Delete game if no players are left
         games = games.filter(g => !(g.id = game.id));
         gamesById[game.id] = undefined;
-        
         console.log("Game", game.id, "deleted");
+      }
+      else {
+        let newOwner = game.players[0];
+        newOwner.isOwner = true;
+        io.to(newOwner.id).emit("now owner");
       }
     }
 
