@@ -256,6 +256,8 @@ io.on('connection', (socket) => {
       endSeconds: startSeconds + listenTime,
       timeMs: listenTime * 1000,
     });
+
+    game.roundInProgress = true;
   });
 
   // Correct movie guessed
@@ -276,6 +278,12 @@ io.on('connection', (socket) => {
       if (p.id != ID) {
         io.to(p.id).emit("player guessed correctly", player, ms, guessesLeft);
       }
+    }
+
+    // check if all players have a result
+    if (game.isRoundFinished()) {
+      // if so, the round is done
+      endRound(game);
     }
   });
 
@@ -298,6 +306,12 @@ io.on('connection', (socket) => {
         io.to(p.id).emit("player ran out of guesses", player, ms);
       }
     }
+
+    // check if all players have a result
+    if (game.isRoundFinished()) {
+      // if so, the round is done
+      endRound(game);
+    }
   });
 
   // Players timer expired without a correct guess
@@ -318,6 +332,12 @@ io.on('connection', (socket) => {
       if (p.id != ID) {
         io.to(p.id).emit("player timed out", player, guessesLeft);
       }
+    }
+
+    // check if all players have a result
+    if (game.isRoundFinished()) {
+      // if so, the round is done
+      endRound(game);
     }
   });
 
@@ -341,6 +361,12 @@ io.on('connection', (socket) => {
         io.to(p.id).emit("player disqualified", player, ms, guessesLeft);
       }
     }
+
+    // check if all players have a result
+    if (game.isRoundFinished()) {
+      // if so, the round is done
+      endRound(game);
+    }
   });
 
   // Client disconnected
@@ -357,6 +383,12 @@ io.on('connection', (socket) => {
     if (game) {
       // remove from list of game players
       game.players = game.players.filter(p => !(p.id == ID));
+
+      // Check if this player has results in this game's current round
+      if (game.roundResults.filter(r => r.player.id == ID)) {
+        // if found, remove it
+        game.roundResults = game.roundResults.filter(r => r.player.id != ID);
+      }
 
       // socket should leave the room
       socket.leave(getRoomId(game.id));
@@ -385,3 +417,53 @@ server.listen(3000, () => {
   console.log('server running at http://localhost:3000');
 });
 
+
+function endRound(game) {
+  let res = game.roundResults;
+
+  // sort based on results (correct and fastest at top)
+  res.sort(function(a, b) {
+    if (a.result == "correct") {
+      if (b.result == "correct") {
+        return a.time - b.time;
+      }
+      return -1;
+    }
+    else if (b.result == "correct") {
+      if (a.result == "correct") {
+        return b.time - a.time;
+      }
+      return 1;
+    }
+    return 0;
+  });
+
+  // Get the fastest time, if applicable
+  let bestTime;
+  if (res[0].result == "correct") {
+    bestTime = res[0].time;
+    res[0].score = 1000;
+    res[0].player.score += 1000;
+  }
+  else {
+    res[0].score = 0;
+  }
+
+
+  for (let i = 1; i < res.length; i++) {
+    if (res[i].result == "correct") {
+      let points = Math.round(1000 * bestTime / res[i].time);
+      res[i].score = points;
+      res[i].player.score += points;
+    }
+    else {
+      res[i].score = 0;
+    }
+  }
+
+  for (let r of res) {
+    console.log(r.player.name, r.score);
+  }
+
+  io.to(getRoomId(game.id)).emit("round done", res);
+}

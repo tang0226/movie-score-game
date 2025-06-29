@@ -214,7 +214,7 @@ function createPlayerCard(player) {
   nameEle.classList.add("text");
   
   let pointsEle = document.createElement("div");
-  pointsEle.innerText = `${player.score} points`
+  pointsEle.innerText = `${player.score} points`;
   pointsEle.classList.add("text");
 
   contentEle.appendChild(nameEle);
@@ -299,6 +299,10 @@ function initTilesSection(m) {
           if (guessOverlayId == getTileOverlayId(currMovie.imageId)) {
             let ms = getElapsedSongTime();
             
+            playerDone = true;
+            gotCorrect = true;
+
+            
             socket.emit("correct guess", ms, guessesLeft);
             roundResults.push({
               player: {
@@ -312,9 +316,7 @@ function initTilesSection(m) {
             console.log(roundResults);
 
             overlayEle.classList.add("tile-overlay-correct");
-            gotCorrect = true;
             correctGuessId = guessOverlayId;
-            playerDone = true;
             let s = formatMs(ms);
             logMessage(`You guessed correctly in: ${s}s`, "success");
           }
@@ -369,18 +371,29 @@ function resetGameVariables() {
   gameInProgress = false;
 }
 
-// When a round ends
-function resetRoundVariables() {
+
+function resetGameRoundVariables() {
   roundInProgress = false;
   songPlaying = false;
   stretchStartTime = null;
   cumStretchTime = 0;
+}
+
+function resetPlayerRoundVariables() {
   currMovie = null;
   currSong = null;
   listenTime = null;
+
+
   gotCorrect = null;
   guessesLeft = null;
+  playerDone = null;
+  playerDQed = null;
+
+
+  roundResults = null;
 }
+
 
 function resetTiles() {
   for (let id of wrongGuessIds) {
@@ -398,9 +411,6 @@ function resetTiles() {
 
 // Preps the round and begins the countdown to play the song
 function startRound() {
-  
-  // Reset the round results;
-  roundResults = [];
 
   roundInProgress = true;
 
@@ -409,6 +419,8 @@ function startRound() {
   
   playerDone = false;
   playerDQed = false;
+
+  roundResults = [];
   
   updateGuessesLeft();
 
@@ -425,12 +437,17 @@ function startSong() {
   progressBarInterval = window.setInterval(updateProgressBar, 1000/60);
 }
 
-// Stops the video and progress bar and resets round variables
-function endRound() {
+// Stops the video and progress bar
+function stopSong() {
   YT_PLAYER.stopVideo();
   window.clearInterval(progressBarInterval);
-  console.log("round done:", getElapsedSongTime());
-  resetRoundVariables();
+}
+
+// resets round variables
+function endRound() {
+  stopSong();
+  resetGameRoundVariables();
+  resetPlayerRoundVariables();
 }
 
 // Second-counting utility function (temp?)
@@ -452,6 +469,7 @@ function updateProgressBar() {
 
     if (t > listenTime) {
       if (guessesLeft && !gotCorrect && !playerDQed) {
+        playerDone = true;
         roundResults.push({
           player: {
             id: playerId,
@@ -466,7 +484,7 @@ function updateProgressBar() {
         console.log(roundResults);
       }
       countdownEle.innerText = "Song done";
-      endRound();
+      stopSong();
     }
   }
 }
@@ -547,9 +565,6 @@ startButton.addEventListener("click", function() {
 
 // Start next round when next button clicked (temp)
 nextButton.addEventListener("click", function() {
-  if (roundInProgress) {
-    endRound();
-  }
   socket.emit("start next round");
 });
 
@@ -600,7 +615,7 @@ quitButton.addEventListener("click", function() {
 });
 
 // DQing
-window.addEventListener("blur", function() {
+/*window.addEventListener("blur", function() {
   console.log("blur!", performance.now());
   if (roundInProgress && !playerDone) {
     playerDone = true;
@@ -611,6 +626,7 @@ window.addEventListener("blur", function() {
     sendDQ();
   }
 });
+*/
 
 document.addEventListener("keydown", function(event) {
   if (!event.key) {
@@ -862,6 +878,28 @@ socket.on("next round", (data) => {
   });
 
   startRound();
+});
+
+socket.on("round done", (results) => {
+  logMessage("Round done.");
+  logMessage(`Movie: ${currMovie.name}`);
+  logMessage(`Song: ${currSong.name}`);
+  logMessage("Scores:");
+  for (let i = 0; i < results.length; i++) {
+    let color;
+    let res = results[i]
+    if (res.result == "correct") {
+      color = "success";
+    }
+    else {
+      color = "error";
+    }
+    let player = res.player;
+    logMessage(`${player.name}: +${res.score}`, color);
+    document.getElementById(getPlayerCardId(player.id)).children[1].children[1].innerText = `${player.score} points`;
+  }
+
+  endRound();
 });
 
 })();
