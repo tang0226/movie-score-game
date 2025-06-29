@@ -69,6 +69,7 @@ function onPlayerStateChange(event) {
           songBuffering = false;
         }
 
+        countdownEle.innerText = "Song playing...";
         songPlaying = true;
       }
       break;
@@ -82,6 +83,7 @@ function onPlayerStateChange(event) {
         stretchStartTime = null;
         songPlaying = false;
         songBuffering = true;
+        countdownEle.innerText = "Song buffering...";
       }
   }
 }
@@ -135,7 +137,7 @@ var settingsInputs = [gameEndTypeInput, roundsInput, pointsInput, listenTimeInpu
 var nextButton = document.getElementById("next");
 var progressBar = document.getElementById("progress-bar").children[0];
 var volumeSlider = document.getElementById("volume-slider");
-var countdownEle = document.getElementById("countdown");
+window.countdownEle = document.getElementById("countdown");
 var guessesLeftEle = document.getElementById("guesses-left");
 
 
@@ -432,13 +434,13 @@ function endRound() {
 }
 
 // Second-counting utility function (temp?)
-function countDown(time, callback, ...args) {
-  countdownEle.innerText = time;
+function countDown(time) {
+  countdownEle.innerText = `Round starting in: ${time}`;
   if (time == 0) {
-    callback(...args);
+    startSong();
     return;
   }
-  setTimeout(countDown, 1000, time - 1, callback, ...args);
+  setTimeout(countDown, 1000, time - 1);
 }
 
 function updateProgressBar() {
@@ -463,6 +465,7 @@ function updateProgressBar() {
         socket.emit("timed out", guessesLeft);
         console.log(roundResults);
       }
+      countdownEle.innerText = "Song done";
       endRound();
     }
   }
