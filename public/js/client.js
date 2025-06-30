@@ -20,6 +20,13 @@ within this full-screen div, have a centered main container
 This centered main container can simply be a display block (intro-view)
 
 OR it can be a display flex containing the three main columns (game and gameplay views)
+
+EESSUES:
+ * Secrecy options
+ * Next button
+ * "Song playing..." displays in between rounds
+ * Round reset on server
+
 */
 
 // Youtube iframe API
@@ -198,6 +205,7 @@ function createPlayerCard(player) {
   card.classList.add("player-card");
 
   let placeEle = document.createElement("div");
+  placeEle.id = getPlayerPlaceId(player);
   placeEle.innerText = `${player.place}`;
   placeEle.style.position = "absolute";
   placeEle.style.left = "0px";
@@ -235,6 +243,14 @@ function logMessage(msg, color = "info") {
 
 function getPlayerCardId(id) {
   return id + "-card";
+}
+
+function getPlayerPointsEleId(id) {
+  return id + "-points";
+}
+
+function getPlayerPlaceId(id) {
+  return id + "-place";
 }
 
 function getTileOverlayId(imgId) {
@@ -701,11 +717,11 @@ socket.on("game created", (game, id) => {
   joinedGame = true;
   currView = "gameSettings";
 
-  console.log(game.players);
-
   // Add name to initial player list (element and array)
   playerList.appendChild(createPlayerCard(game.players[0]));
   players = [game.players[0]];
+
+  round = 1;
 });
 
 // when we receive confirmation that a game was successfully joined:
@@ -742,6 +758,8 @@ socket.on("game joined", (game, id) => {
   }
 
   players = game.players;
+
+  round = 1;
 });
 
 // when another player joins the game

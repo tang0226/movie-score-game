@@ -438,21 +438,10 @@ function endRound(game) {
     return 0;
   });
 
-  // Get the fastest time, if applicable
-  let bestTime;
-  if (res[0].result == "correct") {
-    bestTime = res[0].time;
-    res[0].score = 1000;
-    res[0].player.score += 1000;
-  }
-  else {
-    res[0].score = 0;
-  }
 
-
-  for (let i = 1; i < res.length; i++) {
+  for (let i = 0; i < res.length; i++) {
     if (res[i].result == "correct") {
-      let points = Math.round(1000 * bestTime / res[i].time);
+      let points = Math.round(1000 * (1 - res[i].time / (game.settings.listenTime * 1000)));
       res[i].score = points;
       res[i].player.score += points;
     }
