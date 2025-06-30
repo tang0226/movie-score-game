@@ -230,6 +230,7 @@ function logMessage(msg, color = "info") {
   div.textContent = msg;
   div.style.color = `var(--log-text-${color})`;
   log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
 }
 
 function getPlayerCardId(id) {
@@ -313,7 +314,6 @@ function initTilesSection(m) {
               guessesLeft: guessesLeft,
               time: ms / 1000,
             });
-            console.log(roundResults);
 
             overlayEle.classList.add("tile-overlay-correct");
             correctGuessId = guessOverlayId;
@@ -337,7 +337,6 @@ function initTilesSection(m) {
               });
               logMessage(`You ran out of guesses.`, "error");
               socket.emit("ran out of guesses", time);
-              console.log(roundResults);
             }
           }
         }
@@ -481,7 +480,6 @@ function updateProgressBar() {
         });
         logMessage("You timed out.", "error");
         socket.emit("timed out", guessesLeft);
-        console.log(roundResults);
       }
       countdownEle.innerText = "Song done";
       stopSong();
@@ -645,7 +643,17 @@ document.addEventListener("keydown", function(event) {
 
 function sendDQ() {
   if (roundInProgress) {
-    socket.emit("disqualified", getElapsedSongTime, guessesLeft);
+    let time = getElapsedSongTime();
+    roundResults.push({
+      player: {
+        id: playerId,
+        name: playerName,
+      },
+      result: "disqualified",
+      guessesLeft: guessesLeft,
+      time: time,
+    });
+    socket.emit("disqualified", time, guessesLeft);
   }
 }
 
@@ -808,7 +816,6 @@ socket.on("player guessed correctly", (player, ms, guessesLeft) => {
     time: ms / 1000,
   });
   logMessage(`${player.name}: ${formatMs(ms)}s`, "success");
-  console.log(roundResults);
 });
 
 socket.on("player ran out of guesses", (player, ms) => {
@@ -822,7 +829,6 @@ socket.on("player ran out of guesses", (player, ms) => {
     time: ms,
   });
   logMessage(`${player.name} ran out of guesses.`, "error");
-  console.log(roundResults);
 });
 
 socket.on("player timed out", (player, guessesLeft) => {
@@ -836,7 +842,6 @@ socket.on("player timed out", (player, guessesLeft) => {
     time: listenTime,
   });
   logMessage(`${player.name} timed out.`, "error");
-  console.log(roundResults);
 });
 
 socket.on("player disqualified", (player, ms, guessesLeft) => {
@@ -850,7 +855,6 @@ socket.on("player disqualified", (player, ms, guessesLeft) => {
     time: ms,
   });
   logMessage(`${player.name} was disqualified.`, "error");
-  console.log(roundResults);
 });
 
 // when we receive the movie data

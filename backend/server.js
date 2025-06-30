@@ -461,9 +461,5 @@ function endRound(game) {
     }
   }
 
-  for (let r of res) {
-    console.log(r.player.name, r.score);
-  }
-
   io.to(getRoomId(game.id)).emit("round done", res);
 }
