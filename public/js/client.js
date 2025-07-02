@@ -467,6 +467,11 @@ function endRound() {
 
 // Second-counting utility function (temp?)
 function countDown(time) {
+  // Make sure the player didn't quit right after the countdown started.
+  if (!joinedGame) {
+    return;
+  }
+  
   countdownEle.innerText = `Round starting in: ${time}`;
   if (time == 0) {
     startSong();
