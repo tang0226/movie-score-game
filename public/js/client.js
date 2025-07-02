@@ -3,16 +3,16 @@ TODO / PLANNING:
 Store player information locally
 v Times go to server.
 v Server sends times to clients.
-Clients receive times ("player guessed correctly" msg)
-Server calculates scores.
-Scores get sent to clients.
+v Clients receive times ("player guessed correctly" msg)
+v Server calculates scores.
+v Scores get sent to clients.
 Next round starts when all players confirm OR after 15 seconds
 
 
 IDEAS FOR LAYOUT:
-HUD, volume, timing bar, and movie tiles in center
-Left: Scoreboard (name: points), with progress-bar-style graphing of relative points.
-Right: log (players joining, leaving, guessing, dq-ing, winning)
+v HUD, volume, timing bar, and movie tiles in center
+v Left: Scoreboard (name: points), with progress-bar-style graphing of relative points.
+v Right: log (players joining, leaving, guessing, dq-ing, winning)
 
 Main structure:
 Full-screen div, display flex, align-items center vertically
@@ -25,7 +25,7 @@ EESSUES:
  * Secrecy options
  * Next button
  * "Song playing..." displays in between rounds
- * Round reset on server
+ * X Round reset on server
 
 */
 
@@ -66,30 +66,28 @@ function onPlayerStateChange(event) {
   lastStateTime = time;
   switch(event.data) {
     case 1:
-      if (roundInProgress) {
-        stretchStartTime = performance.now();
+      ytPlayer.stretchStartTime = performance.now();
 
-        if (!songBuffering) {
-          cumStretchTime = 0;
-        }
-        else {
-          songBuffering = false;
-        }
-
-        countdownEle.innerText = "Song playing...";
-        songPlaying = true;
+      if (!ytPlayer.songBuffering) {
+        ytPlayer.cumStretchTime = 0;
       }
+      else {
+        ytPlayer.songBuffering = false;
+      }
+
+      countdownEle.innerText = "Song playing...";
+      ytPlayer.songPlaying = true;
       break;
     case 2:
       YT_PLAYER.playVideo();
       break;
     case 3:
-      if (songPlaying) {
+      if (ytPlayer.songPlaying) {
         console.error("BUFFERING");
-        cumStretchTime += performance.now() - stretchStartTime;
-        stretchStartTime = null;
-        songPlaying = false;
-        songBuffering = true;
+        ytPlayer.cumStretchTime += performance.now() - ytPlayer.stretchStartTime;
+        ytPlayer.stretchStartTime = null;
+        ytPlayer.songPlaying = false;
+        ytPlayer.songBuffering = true;
         countdownEle.innerText = "Song buffering...";
       }
   }
@@ -99,12 +97,16 @@ function onPlayerStateChange(event) {
 
 
 function getElapsedSongTime() {
-  return performance.now() - stretchStartTime + cumStretchTime;
+  return performance.now() - ytPlayer.stretchStartTime + ytPlayer.cumStretchTime;
 }
 
-// Variables for storing lengths of stretches (between buffers)
-var stretchStartTime = null, cumStretchTime = 0, roundInProgress = false,
-  songPlaying = false, songBuffering = false;
+// Object storing data about the YT player status and play time.
+var ytPlayer = {
+  stretchStartTime: null,
+  cumStretchTime: 0,
+  songPlaying: false,
+  songBuffering: false,
+};
 
 var progressBarInterval;
 
@@ -171,21 +173,16 @@ function hideEle(ele) {
 
 
 // Variables
-var quitButtonActive;
-var round = 0;
-var playerName, playerId, isOwner, joinedGame, gameSettings, players, movies, currView,
-  gameInProgress, currMovie, currSong, listenTime, gotCorrect, guessesLeft, roundResults = [],
-  playerDone, playerDQed;
+var player = {};
+var game = { settings: {}, roundInProgress: false };
+
+// Stores information about the ui, including element ids related to the game
+var ui = { quitButtonActive: false, wrongGuessIds: [] };
 
 const TIME_DP = 2;
 function formatMs(ms) {
   return Math.round(ms / 1000 * 10 ** TIME_DP) / 10 ** TIME_DP
 }
-
-// Array of overlays that contain incorrect guesses
-var wrongGuessIds = [];
-var correctGuessId;
-
 
 
 // HTML and DOM functions
@@ -199,14 +196,14 @@ function resetGameUI() {
   log.innerHTML = "<div>Welcome to ScoreGame!</div>";
 }
 
-function createPlayerCard(player) {
+function createPlayerCard(pl) {
   let card = document.createElement("div");
-  card.id = getPlayerCardId(player.id);
+  card.id = getPlayerCardId(pl.id);
   card.classList.add("player-card");
 
   let placeEle = document.createElement("div");
-  placeEle.id = getPlayerPlaceId(player);
-  placeEle.innerText = `${player.place}`;
+  placeEle.id = getPlayerPlaceId(pl);
+  placeEle.innerText = `${pl.place}`;
   placeEle.style.position = "absolute";
   placeEle.style.left = "0px";
   placeEle.style.top = "0px";
@@ -218,11 +215,11 @@ function createPlayerCard(player) {
   contentEle.classList.add("player-card-content");
 
   let nameEle = document.createElement("div");
-  nameEle.innerText = player.name;
+  nameEle.innerText = pl.name;
   nameEle.classList.add("text");
   
   let pointsEle = document.createElement("div");
-  pointsEle.innerText = `${player.score} points`;
+  pointsEle.innerText = `${pl.score} points`;
   pointsEle.classList.add("text");
 
   contentEle.appendChild(nameEle);
@@ -303,49 +300,49 @@ function initTilesSection(m) {
 
     // the overlay has the higher z-index, so it has the click event listener
     overlay.addEventListener("click", function(e) {
-      if (roundInProgress && songPlaying && guessesLeft && !playerDone) {
+      if (game.roundInProgress && ytPlayer.songPlaying && player.guessesLeft && !player.roundDone) {
         let guessOverlayId = e.target.id;
 
-        if (!wrongGuessIds.includes(guessOverlayId)) {
-          guessesLeft--;
+        if (!ui.wrongGuessIds.includes(guessOverlayId)) {
+          player.guessesLeft--;
           updateGuessesLeft();
           
           let overlayEle = document.getElementById(guessOverlayId);
           overlayEle.classList.add("tile-overlay-guessed");
           
-          if (guessOverlayId == getTileOverlayId(currMovie.imageId)) {
+          if (guessOverlayId == getTileOverlayId(game.currMovie.imageId)) {
             let ms = getElapsedSongTime();
             
-            playerDone = true;
-            gotCorrect = true;
+            player.roundDone = true;
+            player.gotCorrect = true;
 
             
-            socket.emit("correct guess", ms, guessesLeft);
-            roundResults.push({
+            socket.emit("correct guess", ms, player.guessesLeft);
+            game.roundResults.push({
               player: {
-                id: playerId,
-                name: playerName,
+                id: player.id,
+                name: player.name,
               },
               result: "correct",
-              guessesLeft: guessesLeft,
+              guessesLeft: player.guessesLeft,
               time: ms / 1000,
             });
 
             overlayEle.classList.add("tile-overlay-correct");
-            correctGuessId = guessOverlayId;
+            ui.correctGuessId = guessOverlayId;
             let s = formatMs(ms);
             logMessage(`You guessed correctly in: ${s}s`, "success");
           }
           else {
             let time = getElapsedSongTime();
             overlayEle.classList.add("tile-overlay-incorrect");
-            wrongGuessIds.push(guessOverlayId);
-            if (guessesLeft == 0) {
-              playerDone = true;
-              roundResults.push({
+            ui.wrongGuessIds.push(guessOverlayId);
+            if (player.guessesLeft == 0) {
+              player.roundDone = true;
+              game.roundResults.push({
                 player: {
-                  id: playerId,
-                  name: playerName,
+                  id: player.id,
+                  name: player.name,
                 },
                 result: "ran out of guesses",
                 guessesLeft: 0,
@@ -367,11 +364,11 @@ function initTilesSection(m) {
 }
 
 function updateGuessesLeft() {
-  if (!playerDQed) {
-    guessesLeftEle.innerText = guessesLeft;
+  if (!player.DQed) {
+    guessesLeftEle.innerText = player.guessesLeft;
   }
   else {
-    guessesLeftEle.innerText = guessesLeft + " (DISQUALIFIED)";
+    guessesLeftEle.innerText = player.guessesLeft + " (DISQUALIFIED)";
   }
 }
 
@@ -379,69 +376,69 @@ function updateGuessesLeft() {
 // Game flow functions
 
 function resetGameVariables() {
-  playerName = null;
-  isOwner = null;
-  gameSettings = null;
-  movies = null;
-  gameInProgress = false;
+  player.name = null;
+  player.isOwner = null;
+  game.settings = null;
+  game.movies = null;
+  game.inProgress = false;
 }
 
 
 function resetGameRoundVariables() {
-  roundInProgress = false;
-  songPlaying = false;
-  stretchStartTime = null;
-  cumStretchTime = 0;
+  game.roundInProgress = false;
+  ytPlayer.songPlaying = false;
+  ytPlayer.stretchStartTime = null;
+  ytPlayer.cumStretchTime = 0;
 }
 
 function resetPlayerRoundVariables() {
-  currMovie = null;
-  currSong = null;
-  listenTime = null;
+  game.currMovie = null;
+  game.currSong = null;
+  game.settings.listenTime = null;
 
 
-  gotCorrect = null;
-  guessesLeft = null;
-  playerDone = null;
-  playerDQed = null;
+  player.gotCorrect = null;
+  player.guessesLeft = null;
+  player.roundDone = null;
+  player.DQed = null;
 
 
-  roundResults = null;
+  game.roundResults = null;
 }
 
 
 function resetTiles() {
-  for (let id of wrongGuessIds) {
+  for (let id of ui.wrongGuessIds) {
     let ele = document.getElementById(id)
     ele.classList.remove("tile-overlay-incorrect", "tile-overlay-guessed");
   }
-  wrongGuessIds = [];
-  if (correctGuessId) {
-    let ele = document.getElementById(correctGuessId);
+  ui.wrongGuessIds = [];
+  if (ui.correctGuessId) {
+    let ele = document.getElementById(ui.correctGuessId);
     ele.classList.remove("tile-overlay-correct", "tile-overlay-guessed");
   }
-  correctGuessId = null;
+  ui.correctGuessId = null;
 }
 
 
 // Preps the round and begins the countdown to play the song
 function startRound() {
 
-  roundInProgress = true;
+  game.roundInProgress = true;
 
-  gotCorrect = false;
-  guessesLeft = gameSettings.guesses;
+  player.gotCorrect = false;
+  player.guessesLeft = game.settings.guesses;
   
-  playerDone = false;
-  playerDQed = false;
+  player.roundDone = false;
+  player.DQed = false;
 
-  roundResults = [];
+  game.roundResults = [];
   
   updateGuessesLeft();
 
   resetTiles();
 
-  logMessage(`Round ${round} starting!`);
+  logMessage(`Round ${game.round} starting!`);
 
   countDown(3, startSong);
 }
@@ -468,10 +465,10 @@ function endRound() {
 // Second-counting utility function (temp?)
 function countDown(time) {
   // Make sure the player didn't quit right after the countdown started.
-  if (!joinedGame) {
+  if (!player.joinedGame) {
     return;
   }
-  
+
   countdownEle.innerText = `Round starting in: ${time}`;
   if (time == 0) {
     startSong();
@@ -481,26 +478,26 @@ function countDown(time) {
 }
 
 function updateProgressBar() {
-  if (songPlaying) {
+  if (ytPlayer.songPlaying) {
     let t = getElapsedSongTime();
 
     progressBar.style.width =
-      (t / listenTime * 100).toString() + "%";
+      (t / game.settings.listenTime * 100).toString() + "%";
 
-    if (t > listenTime) {
-      if (guessesLeft && !gotCorrect && !playerDQed) {
-        playerDone = true;
-        roundResults.push({
+    if (t > game.settings.listenTime) {
+      if (player.guessesLeft && !player.gotCorrect && !player.DQed) {
+        player.roundDone = true;
+        game.roundResults.push({
           player: {
-            id: playerId,
-            name: playerName,
+            id: player.id,
+            name: player.name,
           },
           result: "timeout",
-          guessesLeft: guessesLeft,
-          time: listenTime,
+          guessesLeft: player.guessesLeft,
+          time: game.settings.listenTime,
         });
         logMessage("You timed out.", "error");
-        socket.emit("timed out", guessesLeft);
+        socket.emit("timed out", player.guessesLeft);
       }
       countdownEle.innerText = "Song done";
       stopSong();
@@ -514,7 +511,7 @@ function updateProgressBar() {
 // Create a game
 createGameButton.addEventListener("click", function(event) {
   if (Boolean(nameInput.value) && Boolean(gameIdInput.value)) {
-    playerName = nameInput.value;
+    player.name = nameInput.value;
     socket.emit("player name", nameInput.value);
     socket.emit("create game", gameIdInput.value);
   }
@@ -523,7 +520,7 @@ createGameButton.addEventListener("click", function(event) {
 // Join a game
 joinGameButton.addEventListener("click", function() {
   if (Boolean(nameInput.value) && Boolean(gameIdInput.value)) {
-    playerName = nameInput.value;
+    player.name = nameInput.value;
     socket.emit("player name", nameInput.value);
     socket.emit("join game", gameIdInput.value);
   }
@@ -533,9 +530,9 @@ joinGameButton.addEventListener("click", function() {
 gameEndTypeInput.addEventListener("change", function() {
   updateGameEndInput();
   // Make sure this player is allowed to change this input.
-  if (isOwner) {
+  if (player.isOwner) {
     let type = gameEndTypeInput.value;
-    gameSettings.endCondition.type = type;
+    game.settings.endCondition.type = type;
     socket.emit("change game setting", "endConditionType", type);
 
     // Update the end condition value
@@ -549,30 +546,30 @@ gameEndTypeInput.addEventListener("change", function() {
 });
 
 roundsInput.addEventListener("change", function() {
-  if (isOwner && gameSettings.endCondition.type == "rounds") {
-    gameSettings.endCondition.value = Number(roundsInput.value);
+  if (player.isOwner && game.settings.endCondition.type == "rounds") {
+    game.settings.endCondition.value = Number(roundsInput.value);
     socket.emit("change game setting", "endConditionValue", Number(roundsInput.value));
   }
 });
 
 pointsInput.addEventListener("change", function() {
-  console.log("points changed:", gameSettings);
-  if (isOwner && gameSettings.endCondition.type == "points") {
-    gameSettings.endCondition.value = Number(pointsInput.value);
+  console.log("points changed:", game.settings);
+  if (player.isOwner && game.settings.endCondition.type == "points") {
+    game.settings.endCondition.value = Number(pointsInput.value);
     socket.emit("change game setting", "endConditionValue", Number(pointsInput.value));
   }
 });
 
 listenTimeInput.addEventListener("change", function() {
-  if (isOwner) {
-    gameSettings.listenTime = Number(listenTimeInput.value);
+  if (player.isOwner) {
+    game.settings.listenTime = Number(listenTimeInput.value);
     socket.emit("change game setting", "listenTime", Number(listenTimeInput.value));
   }
 });
 
 guessesInput.addEventListener("change", function() {
-  if (isOwner) {
-    gameSettings.guesses = Number(guessesInput.value);
+  if (player.isOwner) {
+    game.settings.guesses = Number(guessesInput.value);
     socket.emit("change game setting", "guesses", Number(guessesInput.value));
   }
 });
@@ -597,7 +594,7 @@ volumeSlider.addEventListener("change", function() {
 });
 
 quitButton.addEventListener("click", function() {
-  if (quitButtonActive && joinedGame) {
+  if (ui.quitButtonActive && player.joinedGame) {
     socket.emit("leave game");
 
     // Switch to the intro view
@@ -614,21 +611,21 @@ quitButton.addEventListener("click", function() {
     resetGameUI();
 
     // update status variables
-    joinedGame = false;
-    currView = "intro";
+    player.joinedGame = false;
+    ui.currView = "intro";
 
     // Reset the quit button
     quitButton.innerText = "Quit";
-    quitButtonActive = false;
+    ui.quitButtonActive = false;
   }
   else {
     quitButton.innerText = "Quit?";
-    quitButtonActive = true;
+    ui.quitButtonActive = true;
     
     // Return to former state after 3 seconds
     setTimeout(() => {
       quitButton.innerText = "Quit";
-      quitButtonActive = false;
+      ui.quitButtonActive = false;
     }, 3000);
   }
 });
@@ -636,9 +633,9 @@ quitButton.addEventListener("click", function() {
 // DQing
 /*window.addEventListener("blur", function() {
   console.log("blur!", performance.now());
-  if (roundInProgress && !playerDone) {
-    playerDone = true;
-    playerDQed = true;
+  if (game.roundInProgress && !player.roundDone) {
+    player.roundDone = true;
+    player.DQed = true;
     logMessage("You cannot leave the page during a round. You have been disqualified.", "error");
     // Update the guesses left status message to display the DQ
     updateGuessesLeft();
@@ -652,9 +649,9 @@ document.addEventListener("keydown", function(event) {
     return;
   }
   if (event.key.slice(0, 5) == "Audio" || event.key.slice(0, 5) == "Media") {
-    if (roundInProgress && !playerDone) {
-      playerDone = true;
-      playerDQed = true;
+    if (game.roundInProgress && !player.roundDone) {
+      player.roundDone = true;
+      player.DQed = true;
       logMessage("No audio or media keys allowed! You have been disqualified.", "error");
       updateGuessesLeft();
       sendDQ();
@@ -663,18 +660,18 @@ document.addEventListener("keydown", function(event) {
 });
 
 function sendDQ() {
-  if (roundInProgress) {
+  if (game.roundInProgress) {
     let time = getElapsedSongTime();
-    roundResults.push({
+    game.roundResults.push({
       player: {
-        id: playerId,
-        name: playerName,
+        id: player.id,
+        name: player.name,
       },
       result: "disqualified",
-      guessesLeft: guessesLeft,
+      guessesLeft: player.guessesLeft,
       time: time,
     });
-    socket.emit("disqualified", time, guessesLeft);
+    socket.emit("disqualified", time, player.guessesLeft);
   }
 }
 
@@ -697,20 +694,20 @@ socket.on("game already in progress", () => {
 });
 
 // when we receive confirmation that a game was successfully created:
-socket.on("game created", (game, id) => {
-  gameSettings = game.settings;
-  dispGameSettings(gameSettings);
+socket.on("game created", (gameObj, id) => {
+  game.settings = gameObj.settings;
+  dispGameSettings(game.settings);
   
-  playerId = id;
+  player.id = id;
 
-  isOwner = true;
+  player.isOwner = true;
 
   // Open all settings inputs
   for (let input of settingsInputs) {
     input.removeAttribute("disabled");
   }
   
-  if (!movies) {
+  if (!game.movies) {
     socket.emit("request movie data");
   }
 
@@ -719,35 +716,35 @@ socket.on("game created", (game, id) => {
   hideEle(introView);
   showEle(gameView);
 
-  joinedGame = true;
-  currView = "gameSettings";
+  player.joinedGame = true;
+  ui.currView = "gameSettings";
 
   // Add name to initial player list (element and array)
-  playerList.appendChild(createPlayerCard(game.players[0]));
-  players = [game.players[0]];
+  playerList.appendChild(createPlayerCard(gameObj.players[0]));
+  game.players = [gameObj.players[0]];
 
-  round = 1;
+  game.round = 0;
 });
 
 // when we receive confirmation that a game was successfully joined:
-socket.on("game joined", (game, id) => {
-  gameSettings = game.settings;
-  dispGameSettings(gameSettings);
+socket.on("game joined", (gameObj, id) => {
+  game.settings = gameObj.settings;
+  dispGameSettings(game.settings);
 
-  playerId = id;
+  player.id = id;
 
-  isOwner = false;
+  player.isOwner = false;
 
   // Block all settings inputs
   for (let input of settingsInputs) {
     input.setAttribute("disabled", true);
   }
 
-  if (!movies) {
+  if (!game.movies) {
     socket.emit("request movie data");
   }
   else {
-    initTilesSection(movies);
+    initTilesSection(game.movies);
   }
 
   hideEle(startButton);
@@ -755,42 +752,42 @@ socket.on("game joined", (game, id) => {
   hideEle(introView);
   showEle(gameView);
 
-  joinedGame = true;
-  currView = "gameSettings";
+  player.joinedGame = true;
+  ui.currView = "gameSettings";
   
-  for (let player of game.players) {
-    playerList.appendChild(createPlayerCard(player));
+  for (let pl of gameObj.players) {
+    playerList.appendChild(createPlayerCard(pl));
   }
 
-  players = game.players;
+  game.players = gameObj.players;
 
-  round = 1;
+  game.round = 0;
 });
 
 // when another player joins the game
-socket.on("player joined game", (player) => {
-  playerList.appendChild(createPlayerCard(player));
-  players.push(player);
-  logMessage(`${player.name} joined the game.`);
+socket.on("player joined game", (pl) => {
+  playerList.appendChild(createPlayerCard(pl));
+  game.players.push(pl);
+  logMessage(`${pl.name} joined the game.`);
 });
 
 // when another player leaves the game
-socket.on("player left game", (player) => {
-  playerList.removeChild(document.getElementById(getPlayerCardId(player.id)));
-  players = players.filter((p) => p.id != player.id);
-  logMessage(`${player.name} left the game.`);
+socket.on("player left game", (pl) => {
+  playerList.removeChild(document.getElementById(getPlayerCardId(pl.id)));
+  game.players = game.players.filter((p) => p.id != pl.id);
+  logMessage(`${pl.name} left the game.`);
 });
 
 socket.on("game setting changed", (setting, val) => {
   switch (setting) {
     case "endConditionType":
       gameEndTypeInput.value = val;
-      gameSettings.endCondition.type = val;
+      game.settings.endCondition.type = val;
       updateGameEndInput();
       break;
     case "endConditionValue":
-      gameSettings.endCondition.value = val;
-      if (gameSettings.endCondition.type == "rounds") {
+      game.settings.endCondition.value = val;
+      if (game.settings.endCondition.type == "rounds") {
         roundsInput.value = val.toString();
       }
       else {
@@ -799,19 +796,19 @@ socket.on("game setting changed", (setting, val) => {
       break;
     case "listenTime":
       listenTimeInput.value = val.toString();
-      gameSettings.listenTime = val;
+      game.settings.listenTime = val;
       break;
     case "guesses":
       guessesInput.value = val.toString();
-      gameSettings.guesses = val;
+      game.settings.guesses = val;
   }
-  console.log(gameSettings);
+  console.log(game.settings);
 });
 
 socket.on("now owner", () => {
-  if (currView == "intro") return;
-  isOwner = true;
-  if (joinedGame && currView == "gameSettings") {
+  if (ui.currView == "intro") return;
+  player.isOwner = true;
+  if (player.joinedGame && ui.currView == "gameSettings") {
     for (let input of settingsInputs) {
       input.removeAttribute("disabled");
     }
@@ -820,87 +817,87 @@ socket.on("now owner", () => {
   }
 });
 
-socket.on("game started", (game) => {
-  console.log("Game started!:", game);
+socket.on("game started", (gameObj) => {
+  console.log("Game started!:", gameObj);
   hideEle(settingsSection);
   showEle(gameplaySection);
-  currView = "gameplay";
+  ui.currView = "gameplay";
   logMessage("The game has started!");
 });
 
-socket.on("player guessed correctly", (player, ms, guessesLeft) => {
-  roundResults.push({
+socket.on("player guessed correctly", (pl, ms, guessesLeft) => {
+  game.roundResults.push({
     player: {
-      id: player.id,
-      name: player.name,
+      id: pl.id,
+      name: pl.name,
     },
     result: "correct",
     guessesLeft: guessesLeft,
     time: ms / 1000,
   });
-  logMessage(`${player.name}: ${formatMs(ms)}s`, "success");
+  logMessage(`${pl.name}: ${formatMs(ms)}s`, "success");
 });
 
-socket.on("player ran out of guesses", (player, ms) => {
-  roundResults.push({
+socket.on("player ran out of guesses", (pl, ms) => {
+  game.roundResults.push({
     player: {
-      id: player.id,
-      name: player.name,
+      id: pl.id,
+      name: pl.name,
     },
     result: "ran out of guesses",
     guessesLeft: 0,
     time: ms,
   });
-  logMessage(`${player.name} ran out of guesses.`, "error");
+  logMessage(`${pl.name} ran out of guesses.`, "error");
 });
 
-socket.on("player timed out", (player, guessesLeft) => {
-  roundResults.push({
+socket.on("player timed out", (pl, guessesLeft) => {
+  game.roundResults.push({
     player: {
-      id: player.id,
-      name: player.name,
+      id: pl.id,
+      name: pl.name,
     },
     result: "timeout",
     guessesLeft: guessesLeft,
-    time: listenTime,
+    time: game.settings.listenTime,
   });
-  logMessage(`${player.name} timed out.`, "error");
+  logMessage(`${pl.name} timed out.`, "error");
 });
 
-socket.on("player disqualified", (player, ms, guessesLeft) => {
-  roundResults.push({
+socket.on("player disqualified", (pl, ms, guessesLeft) => {
+  game.roundResults.push({
     player: {
-      id: player.id,
-      name: player.name,
+      id: pl.id,
+      name: pl.name,
     },
     result: "disqualified",
     guessesLeft: guessesLeft,
     time: ms,
   });
-  logMessage(`${player.name} was disqualified.`, "error");
+  logMessage(`${pl.name} was disqualified.`, "error");
 });
 
 // when we receive the movie data
 socket.on("movie data", (data) => {
-  movies = data;
+  game.movies = data;
 
   // Sort movies by sorting name
-  movies.sort((a, b) => a.sortingName > b.sortingName ? 1 : b.sortingName > a.sortingName ? -1 : 0);
+  game.movies.sort((a, b) => a.sortingName > b.sortingName ? 1 : b.sortingName > a.sortingName ? -1 : 0);
 
   // Create image tiles
-  initTilesSection(movies);
+  initTilesSection(game.movies);
 });
 
 // when we receive data for the next round
 socket.on("next round", (data) => {
-  round++;
+  game.round++;
 
-  listenTime = data.timeMs;
-  currMovie = data.movie;
-  currSong = data.song;
+  game.settings.listenTime = data.timeMs;
+  game.currMovie = data.movie;
+  game.currSong = data.song;
 
   YT_PLAYER.cueVideoById({
-    videoId: currSong.ytId,
+    videoId: game.currSong.ytId,
     startSeconds: data.startSeconds,
   });
 
@@ -909,9 +906,8 @@ socket.on("next round", (data) => {
 
 socket.on("round done", (results) => {
   logMessage("Round done.");
-  logMessage(`Movie: ${currMovie.name}`);
-  logMessage(`Song: ${currSong.name}`);
-  logMessage("Scores:");
+  logMessage(`Movie: ${game.currMovie.name}`);
+  logMessage(`Song: ${game.currSong.name}`);
   for (let i = 0; i < results.length; i++) {
     let color;
     let res = results[i]
@@ -921,9 +917,9 @@ socket.on("round done", (results) => {
     else {
       color = "error";
     }
-    let player = res.player;
-    logMessage(`${player.name}: +${res.score}`, color);
-    document.getElementById(getPlayerCardId(player.id)).children[1].children[1].innerText = `${player.score} points`;
+    let pl = res.player;
+    logMessage(`${pl.name}: +${res.score}`, color);
+    document.getElementById(getPlayerCardId(pl.id)).children[1].children[1].innerText = `${pl.score} points`;
   }
 
   endRound();
