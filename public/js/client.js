@@ -6,7 +6,39 @@ v Server sends times to clients.
 v Clients receive times ("player guessed correctly" msg)
 v Server calculates scores.
 v Scores get sent to clients.
-Next round starts when all players confirm OR after 15 seconds
+
+Core:
+Next round starts when all players confirm
+Perform game-end checks (round counter, and player scores)
+Handle disconnections:
+ * any time a player disconnects, store their player object AND IP ADDRESS together.
+ * In the game and session game objects, mark the player as "disconnected." They will not be counted in any round that BEGINS while they are still disconnected
+ * If a player later joins with the same IP Address and name(?), treat them as the disconnected player. They can join the next round that starts, and also mkae sure that all other players are notified from the server.
+ * A reconnected player can have round results marked as "disconnected" with no points scored.
+ * If all players in a game disconnect, maybe wait a certain amount of time? If no players return, then delete the game.
+
+Smaller:
+Refactor player cards and points displays
+Store detailed results in client session (for client-side statistics and visualizations)
+Allow players to join mid-game
+ * If rounds have already been played, create round-results for previous round, marked as "absent" or something of the like.
+ * Player cards will be modified
+Fix Quit button layout
+Bug: "Song playing..." displays in between rounds
+
+Larger:
+Movie picking
+ * Checkmarks next to names, and then album covers with x-icon on hover, click = remove
+ * Filters (Studio, composer, etc.)
+   * This will involve adding more data and parsing to the movie data text file
+Visualizations and statistics tables
+ * Canvas time, baby!
+
+Long term:
+secrecy (options to show when ppl guess, what they guessed, when they ran out of guesses, or nothing at all!)
+player colors? avatars?
+movie "drafting"? alternating picking movies for a set?
+Song filtering? (lyrics / no lyrics)
 
 
 IDEAS FOR LAYOUT:
@@ -20,12 +52,6 @@ within this full-screen div, have a centered main container
 This centered main container can simply be a display block (intro-view)
 
 OR it can be a display flex containing the three main columns (game and gameplay views)
-
-EESSUES:
- * Secrecy options
- * Next button
- * "Song playing..." displays in between rounds
- * X Round reset on server
 
 */
 
