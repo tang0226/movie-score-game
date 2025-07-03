@@ -325,7 +325,6 @@ io.on('connection', (socket) => {
       player: player,
       result: "timeout",
       guessesLeft: guessesLeft,
-      time: game.settings.listenTime * 1000,
     });
 
     for (let p of game.players) {

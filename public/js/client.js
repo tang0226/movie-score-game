@@ -200,7 +200,10 @@ function hideEle(ele) {
 
 // Variables
 var player = {};
-var game = { settings: {}, roundInProgress: false };
+var game = {
+  settings: {},
+  roundInProgress: false,
+};
 
 // Stores information about the ui, including element ids related to the game
 var ui = { quitButtonActive: false, wrongGuessIds: [] };
@@ -398,27 +401,20 @@ function resetGameVariables() {
   game.inProgress = false;
 }
 
-
-function resetGameRoundVariables() {
+function resetRoundVariables() {
+  game.currMovie = null;
+  game.currSong = null;
   game.roundInProgress = false;
+  game.roundResults = [];
+
   ytPlayer.songPlaying = false;
   ytPlayer.stretchStartTime = null;
   ytPlayer.cumStretchTime = 0;
-}
-
-function resetPlayerRoundVariables() {
-  game.currMovie = null;
-  game.currSong = null;
-  game.settings.listenTime = null;
-
 
   player.gotCorrect = null;
   player.guessesLeft = null;
   player.roundDone = null;
   player.DQed = null;
-
-
-  game.roundResults = null;
 }
 
 
@@ -474,8 +470,7 @@ function stopSong() {
 // resets round variables
 function endRound() {
   stopSong();
-  resetGameRoundVariables();
-  resetPlayerRoundVariables();
+  resetRoundVariables();
 }
 
 // Second-counting utility function (temp?)
