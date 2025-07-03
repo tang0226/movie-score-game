@@ -101,7 +101,7 @@ function onPlayerStateChange(event) {
         ytPlayer.songBuffering = false;
       }
 
-      countdownEle.innerText = "Song playing...";
+      roundStatusEle.innerText = "Song playing...";
       ytPlayer.songPlaying = true;
       break;
     case 2:
@@ -109,12 +109,12 @@ function onPlayerStateChange(event) {
       break;
     case 3:
       if (ytPlayer.songPlaying) {
-        console.error("BUFFERING");
+        console.warn("BUFFERING");
         ytPlayer.cumStretchTime += performance.now() - ytPlayer.stretchStartTime;
         ytPlayer.stretchStartTime = null;
         ytPlayer.songPlaying = false;
         ytPlayer.songBuffering = true;
-        countdownEle.innerText = "Song buffering...";
+        roundStatusEle.innerText = "Song buffering...";
       }
   }
 }
@@ -172,7 +172,7 @@ var settingsInputs = [gameEndTypeInput, roundsInput, pointsInput, listenTimeInpu
 var nextButton = document.getElementById("next");
 var progressBar = document.getElementById("progress-bar").children[0];
 var volumeSlider = document.getElementById("volume-slider");
-window.countdownEle = document.getElementById("countdown");
+window.roundStatusEle = document.getElementById("round-status");
 var guessesLeftEle = document.getElementById("guesses-left");
 
 
@@ -222,6 +222,7 @@ function resetGameUI() {
   log.innerHTML = "<div>Welcome to ScoreGame!</div>";
 }
 
+/*
 function createPlayerCard(pl) {
   let card = document.createElement("div");
   card.id = getPlayerCardId(pl.id);
@@ -254,7 +255,7 @@ function createPlayerCard(pl) {
   card.appendChild(contentEle);
   
   return card;
-}
+}*/
 
 function logMessage(msg, color = "info") {
   let div = document.createElement("div");
@@ -262,18 +263,6 @@ function logMessage(msg, color = "info") {
   div.style.color = `var(--log-text-${color})`;
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
-}
-
-function getPlayerCardId(id) {
-  return id + "-card";
-}
-
-function getPlayerPointsEleId(id) {
-  return id + "-points";
-}
-
-function getPlayerPlaceId(id) {
-  return id + "-place";
 }
 
 function getTileOverlayId(imgId) {
@@ -479,6 +468,7 @@ function startSong() {
 function stopSong() {
   YT_PLAYER.stopVideo();
   window.clearInterval(progressBarInterval);
+  roundStatusEle.innerText = "Song done.";
 }
 
 // resets round variables
@@ -495,7 +485,7 @@ function countDown(time) {
     return;
   }
 
-  countdownEle.innerText = `Round starting in: ${time}`;
+  roundStatusEle.innerText = `Round starting in: ${time}`;
   if (time == 0) {
     startSong();
     return;
@@ -525,7 +515,6 @@ function updateProgressBar() {
         logMessage("You timed out.", "error");
         socket.emit("timed out", player.guessesLeft);
       }
-      countdownEle.innerText = "Song done";
       stopSong();
     }
   }
@@ -746,7 +735,7 @@ socket.on("game created", (gameObj, id) => {
   ui.currView = "gameSettings";
 
   // Add name to initial player list (element and array)
-  playerList.appendChild(createPlayerCard(gameObj.players[0]));
+  // playerList.appendChild(createPlayerCard(gameObj.players[0]));
   game.players = [gameObj.players[0]];
 
   game.round = 0;
@@ -781,9 +770,9 @@ socket.on("game joined", (gameObj, id) => {
   player.joinedGame = true;
   ui.currView = "gameSettings";
   
-  for (let pl of gameObj.players) {
+  /*for (let pl of gameObj.players) {
     playerList.appendChild(createPlayerCard(pl));
-  }
+  }*/
 
   game.players = gameObj.players;
 
@@ -792,14 +781,14 @@ socket.on("game joined", (gameObj, id) => {
 
 // when another player joins the game
 socket.on("player joined game", (pl) => {
-  playerList.appendChild(createPlayerCard(pl));
+  //playerList.appendChild(createPlayerCard(pl));
   game.players.push(pl);
   logMessage(`${pl.name} joined the game.`);
 });
 
 // when another player leaves the game
 socket.on("player left game", (pl) => {
-  playerList.removeChild(document.getElementById(getPlayerCardId(pl.id)));
+  //playerList.removeChild(document.getElementById(getPlayerCardId(pl.id)));
   game.players = game.players.filter((p) => p.id != pl.id);
   logMessage(`${pl.name} left the game.`);
 });
@@ -945,7 +934,7 @@ socket.on("round done", (results) => {
     }
     let pl = res.player;
     logMessage(`${pl.name}: +${res.score}`, color);
-    document.getElementById(getPlayerCardId(pl.id)).children[1].children[1].innerText = `${pl.score} points`;
+    //document.getElementById(getPlayerCardId(pl.id)).children[1].children[1].innerText = `${pl.score} points`;
   }
 
   endRound();
