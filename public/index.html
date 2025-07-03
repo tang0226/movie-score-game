@@ -1,46 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>title</title>
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
-  <div id="main-container">
+  <main id="main-container">
     <div id="intro-view">
-      <div id="intro-section">
+      <section id="intro-section">
         <h1 class="intro-header">ScoreGame</h1>
         <div>
           <div class="text inline">Name: </div>
-          <input type="text" id="name" placeholder=""/>
+          <input type="text" id="name" placeholder="">
         </div>
         <div class="space"></div>
         <div>
           <div class="text inline">Game ID: </div>
-          <input type="text" id="game-id" placeholder=""/>
+          <input type="text" id="game-id" placeholder="">
         </div>
         <div class="space"></div>
         <div>
           <button id="create-game" class="inline">Create Game</button>
           <button id="join-game">Join Game</button>
         </div>
-      </div>
+      </section>
     </div>
 
     <div id="game-view" class="hidden">
-      <div id="game-header">
+      <header id="game-header">
         <div id="game-header-text">ScoreGame</div>
         <button id="quit-button">Quit</button>
-      </div>
+      </header>
       <div id="player-list"></div>
       <div id="game-ui">
-        <div id="settings-section">
+        <section id="settings-section">
           <div>
             <div>
               <span class="text">Ending condition: </span>
               <span>
-                <input id="rounds-input" type="text" class="inline" size="4"/>
-                <input id="points-input" type="text" class="inline hidden" size="4"/>
+                <input id="rounds-input" type="text" class="inline" size="4">
+                <input id="points-input" type="text" class="inline hidden" size="4">
                 <select id="game-end-type" class="text">
                   <option value="rounds">rounds</option>
                   <option vlaue="points">points</option>
@@ -84,16 +84,16 @@
             <button id="start-game">Start</button>
           
           </div>
-        </div>
+        </section>
 
-        <div id="gameplay-section" class="hidden">
+        <section id="gameplay-section" class="hidden">
           <div id="yt-player"></div>
           <div id="countdown" class="text"></div>
           <div id="progress-bar">
             <div></div>
           </div>
           <div class="text">
-            Vol. <input id="volume-slider" type="range" value="25"/>
+            Vol. <input id="volume-slider" type="range" value="25">
           </div>
           <div class="space"></div>
           <div class="text">
@@ -103,14 +103,14 @@
           <button id="next">Next</button>
           <div class="space"></div>
           <div id="tiles-section"></div>
-        </div>
+        </section>
       </div>
       <div id="log">
         <div>Welcome to ScoreGame!</div>
       </div>
     </div>
 
-  </div>
+  </main>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/client.js"></script>
 </body>
