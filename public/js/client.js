@@ -202,14 +202,19 @@ function hideEle(ele) {
 var player = {};
 var game = {
   settings: {},
-  roundInProgress: false,
+  players: [],
+  playersById: {},
+  roundResults: [],
+  roundResultsById: {},
+  cumResults: [],
+  cumResultsById: {},
 };
 
 // Stores information about the ui, including element ids related to the game
 var ui = { quitButtonActive: false, wrongGuessIds: [] };
 
 const TIME_DP = 2;
-function formatMs(ms) {
+function msToS(ms) {
   return Math.round(ms / 1000 * 10 ** TIME_DP) / 10 ** TIME_DP
 }
 
@@ -334,21 +339,22 @@ function initTilesSection(m) {
             player.roundDone = true;
             player.gotCorrect = true;
 
-            
-            socket.emit("correct guess", ms, player.guessesLeft);
-            game.roundResults.push({
+            let roundRes = {
               player: {
                 id: player.id,
                 name: player.name,
               },
               result: "correct",
               guessesLeft: player.guessesLeft,
-              time: ms / 1000,
-            });
+              time: ms,
+            };
+
+            socket.emit("player round result", roundRes);
+            game.roundResults.push(roundRes);
 
             overlayEle.classList.add("tile-overlay-correct");
             ui.correctGuessId = guessOverlayId;
-            let s = formatMs(ms);
+            let s = msToS(ms);
             logMessage(`You guessed correctly in: ${s}s`, "success");
           }
           else {
@@ -357,7 +363,8 @@ function initTilesSection(m) {
             ui.wrongGuessIds.push(guessOverlayId);
             if (player.guessesLeft == 0) {
               player.roundDone = true;
-              game.roundResults.push({
+
+              let roundRes = {
                 player: {
                   id: player.id,
                   name: player.name,
@@ -365,9 +372,10 @@ function initTilesSection(m) {
                 result: "ran out of guesses",
                 guessesLeft: 0,
                 time: time,
-              });
+              };
+              socket.emit("player round result", roundRes);
+              game.roundResults.push(roundRes);
               logMessage(`You ran out of guesses.`, "error");
-              socket.emit("ran out of guesses", time);
             }
           }
         }
@@ -396,7 +404,14 @@ function updateGuessesLeft() {
 function resetGameVariables() {
   player.name = null;
   player.isOwner = null;
-  game.settings = null;
+  player.score = 0;
+  game.settings = {};
+  game.players = [];
+  game.playersById = {};
+  game.roundResults = [];
+  game.roundResultsById = {};
+  game.cumResults = [];
+  game.cumResultsById = {};
   game.movies = null;
   game.inProgress = false;
 }
@@ -434,6 +449,7 @@ function resetTiles() {
 
 // Preps the round and begins the countdown to play the song
 function startRound() {
+  stopSong();
 
   game.roundInProgress = true;
 
@@ -467,12 +483,6 @@ function stopSong() {
   roundStatusEle.innerText = "Song done.";
 }
 
-// resets round variables
-function endRound() {
-  stopSong();
-  resetRoundVariables();
-}
-
 // Second-counting utility function (temp?)
 function countDown(time) {
   // Make sure the player didn't quit right after the countdown started.
@@ -493,22 +503,25 @@ function updateProgressBar() {
     let t = getElapsedSongTime();
 
     progressBar.style.width =
-      (t / game.settings.listenTime * 100).toString() + "%";
+      (t / game.settings.listenTimeMs * 100).toString() + "%";
 
-    if (t > game.settings.listenTime) {
+    if (t > game.settings.listenTimeMs) {
       if (player.guessesLeft && !player.gotCorrect && !player.DQed) {
         player.roundDone = true;
-        game.roundResults.push({
+
+        let roundRes = {
           player: {
             id: player.id,
             name: player.name,
           },
           result: "timeout",
           guessesLeft: player.guessesLeft,
-          time: game.settings.listenTime,
-        });
+          time: game.settings.listenTimeMs,
+        };
+
+        socket.emit("player round result", roundRes);
+        game.roundResults.push(roundRes);
         logMessage("You timed out.", "error");
-        socket.emit("timed out", player.guessesLeft);
       }
       stopSong();
     }
@@ -563,7 +576,6 @@ roundsInput.addEventListener("change", function() {
 });
 
 pointsInput.addEventListener("change", function() {
-  console.log("points changed:", game.settings);
   if (player.isOwner && game.settings.endCondition.type == "points") {
     game.settings.endCondition.value = Number(pointsInput.value);
     socket.emit("change game setting", "endConditionValue", Number(pointsInput.value));
@@ -573,6 +585,7 @@ pointsInput.addEventListener("change", function() {
 listenTimeInput.addEventListener("change", function() {
   if (player.isOwner) {
     game.settings.listenTime = Number(listenTimeInput.value);
+    game.settings.listenTimeMs = 1000 * Number(listenTimeInput.value);
     socket.emit("change game setting", "listenTime", Number(listenTimeInput.value));
   }
 });
@@ -614,7 +627,8 @@ quitButton.addEventListener("click", function() {
     showEle(introView);
     
     // If a player's round is in progress, end it
-    endRound();
+    stopSong();
+    resetRoundVariables();
 
     // Reset the game
     resetGameVariables();
@@ -672,7 +686,8 @@ document.addEventListener("keydown", function(event) {
 function sendDQ() {
   if (game.roundInProgress) {
     let time = getElapsedSongTime();
-    game.roundResults.push({
+
+    let roundRes = {
       player: {
         id: player.id,
         name: player.name,
@@ -680,8 +695,10 @@ function sendDQ() {
       result: "disqualified",
       guessesLeft: player.guessesLeft,
       time: time,
-    });
-    socket.emit("disqualified", time, player.guessesLeft);
+    };
+
+    game.roundResults.push(roundRes);
+    socket.emit("player round result", roundRes);
   }
 }
 
@@ -733,6 +750,12 @@ socket.on("game created", (gameObj, id) => {
   // playerList.appendChild(createPlayerCard(gameObj.players[0]));
   game.players = [gameObj.players[0]];
 
+  game.playersById = {};
+  game.playersById[gameObj.players[0].id] = gameObj.players[0];
+
+  game.cumResultsById = {};
+  game.cumResultsById[gameObj.players[0].id] = [];
+
   game.round = 0;
 });
 
@@ -770,6 +793,13 @@ socket.on("game joined", (gameObj, id) => {
   }*/
 
   game.players = gameObj.players;
+  
+  game.playersById = {};
+  game.cumResultsById = [];
+  for (let pl of gameObj.players) {
+    game.playersById[pl.id] = pl;
+    game.cumResultsById[pl.id] = [];
+  }
 
   game.round = 0;
 });
@@ -778,6 +808,9 @@ socket.on("game joined", (gameObj, id) => {
 socket.on("player joined game", (pl) => {
   //playerList.appendChild(createPlayerCard(pl));
   game.players.push(pl);
+  game.playersById[pl.id] = pl;
+  game.cumResultsById[pl.id] = [];
+
   logMessage(`${pl.name} joined the game.`);
 });
 
@@ -785,6 +818,9 @@ socket.on("player joined game", (pl) => {
 socket.on("player left game", (pl) => {
   //playerList.removeChild(document.getElementById(getPlayerCardId(pl.id)));
   game.players = game.players.filter((p) => p.id != pl.id);
+  delete game.playersById[pl.id];
+  delete game.cumResultsById[pl.id];
+
   logMessage(`${pl.name} left the game.`);
 });
 
@@ -807,6 +843,7 @@ socket.on("game setting changed", (setting, val) => {
     case "listenTime":
       listenTimeInput.value = val.toString();
       game.settings.listenTime = val;
+      game.settings.listenTimeMs = 1000 * val;
       break;
     case "guesses":
       guessesInput.value = val.toString();
@@ -835,6 +872,7 @@ socket.on("game started", (gameObj) => {
   logMessage("The game has started!");
 });
 
+/**
 socket.on("player guessed correctly", (pl, ms, guessesLeft) => {
   game.roundResults.push({
     player: {
@@ -845,7 +883,7 @@ socket.on("player guessed correctly", (pl, ms, guessesLeft) => {
     guessesLeft: guessesLeft,
     time: ms / 1000,
   });
-  logMessage(`${pl.name}: ${formatMs(ms)}s`, "success");
+  logMessage(`${pl.name}: ${msToS(ms)}s`, "success");
 });
 
 socket.on("player ran out of guesses", (pl, ms) => {
@@ -886,6 +924,25 @@ socket.on("player disqualified", (pl, ms, guessesLeft) => {
   });
   logMessage(`${pl.name} was disqualified.`, "error");
 });
+*/
+
+socket.on("player round result", (res) => {
+  game.roundResults.push(res);
+  switch (res.result) {
+    case "correct":
+      logMessage(`${res.player.name}: ${msToS(res.time)}s`, "success");
+      break;
+    case "ran out of guesses":
+      logMessage(`${res.player.name} ran out of guesses.`, "error");
+      break;
+    case "timeout":
+      logMessage(`${res.player.name} timed out.`, "error");
+      break;
+    case "disqualified":
+      logMessage(`${res.player.name} was disqualified.`, "error");
+      break;
+  }
+});
 
 // when we receive the movie data
 socket.on("movie data", (data) => {
@@ -902,7 +959,6 @@ socket.on("movie data", (data) => {
 socket.on("next round", (data) => {
   game.round++;
 
-  game.settings.listenTime = data.timeMs;
   game.currMovie = data.movie;
   game.currSong = data.song;
 
@@ -914,13 +970,18 @@ socket.on("next round", (data) => {
   startRound();
 });
 
-socket.on("round done", (results) => {
+socket.on("round done", (resArr, resById) => {
+  console.log(resArr, resById);
+  stopSong();
+
   logMessage("Round done.");
   logMessage(`Movie: ${game.currMovie.name}`);
   logMessage(`Song: ${game.currSong.name}`);
-  for (let i = 0; i < results.length; i++) {
+
+  // Display scores on log
+  for (let i = 0; i < resArr.length; i++) {
     let color;
-    let res = results[i]
+    let res = resArr[i];
     if (res.result == "correct") {
       color = "success";
     }
@@ -929,10 +990,19 @@ socket.on("round done", (results) => {
     }
     let pl = res.player;
     logMessage(`${pl.name}: +${res.score}`, color);
-    //document.getElementById(getPlayerCardId(pl.id)).children[1].children[1].innerText = `${pl.score} points`;
   }
 
-  endRound();
+  game.cumResults.push(resArr);
+  for (let key of Object.keys(resById)) {
+    game.cumResultsById[key].push(resById[key]);
+  }
+  for (let res of resArr) {
+    game.playersById[res.player.id].score += res.score;
+  }
+
+  console.log(game.players);
+
+  resetRoundVariables();
 });
 
 })();

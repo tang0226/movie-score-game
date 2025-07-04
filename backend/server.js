@@ -107,6 +107,8 @@ io.on('connection', (socket) => {
         guesses: 3,
       });
 
+      game.settings.listenTimeMs = game.settings.listenTime * 1000;
+
       game.addPlayer(owner);
       game.owner = owner;
       games.push(game);
@@ -239,6 +241,7 @@ io.on('connection', (socket) => {
     let movie, song;
     
     game.roundResults = [];
+    game.roundResultsById = {};
 
     do {
       movie = movies[Math.floor(Math.random() * movies.length)];
@@ -260,104 +263,24 @@ io.on('connection', (socket) => {
     game.roundInProgress = true;
   });
 
-  // Correct movie guessed
-  socket.on("correct guess", (ms, guessesLeft) => {
+  // General round result
+  socket.on("player round result", (result) => {
     let player = playersById[ID];
     if (!player) return;
     let game = gamesById[player.gameId];
     if (!game) return;
 
-    game.roundResults.push({
-      player: player,
-      result: "correct",
-      guessesLeft: guessesLeft,
-      time: ms,
-    });
+    game.roundResults.push(result);
+
+    if (game.roundResultsById[ID]) {
+      console.log(`ERROR: PLAYER ${result.player.name} ALREADY HAS ROUND RESULT`);
+    }
+
+    game.roundResultsById[ID] = result;
 
     for (let p of game.players) {
       if (p.id != ID) {
-        io.to(p.id).emit("player guessed correctly", player, ms, guessesLeft);
-      }
-    }
-
-    // check if all players have a result
-    if (game.isRoundFinished()) {
-      // if so, the round is done
-      endRound(game);
-    }
-  });
-
-  // Player runs out of guesses before timer expires
-  socket.on("ran out of guesses", (ms) => {
-    let player = playersById[ID];
-    if (!player) return;
-    let game = gamesById[player.gameId];
-    if (!game) return;
-
-    game.roundResults.push({
-      player: player,
-      result: "ran out of guesses",
-      guessesLeft: 0,
-      time: ms,
-    });
-
-    for (let p of game.players) {
-      if (p.id != ID) {
-        io.to(p.id).emit("player ran out of guesses", player, ms);
-      }
-    }
-
-    // check if all players have a result
-    if (game.isRoundFinished()) {
-      // if so, the round is done
-      endRound(game);
-    }
-  });
-
-  // Players timer expired without a correct guess
-  socket.on("timed out", (guessesLeft) => {
-    let player = playersById[ID];
-    if (!player) return;
-    let game = gamesById[player.gameId];
-    if (!game) return;
-
-    game.roundResults.push({
-      player: player,
-      result: "timeout",
-      guessesLeft: guessesLeft,
-    });
-
-    for (let p of game.players) {
-      if (p.id != ID) {
-        io.to(p.id).emit("player timed out", player, guessesLeft);
-      }
-    }
-
-    // check if all players have a result
-    if (game.isRoundFinished()) {
-      // if so, the round is done
-      endRound(game);
-    }
-  });
-
-  socket.on("disqualified", (ms, guessesLeft) => {
-    let player = playersById[ID];
-    if (!player) return;
-    let game = gamesById[player.gameId];
-    if (!game) return;
-
-    console.log(player.name, "disqualified");
-
-    game.roundResults.push({
-      player: player,
-      result: "disqualified",
-      guessesLeft: guessesLeft,
-      time: ms,
-    });
-
-    for (let p of game.players) {
-      if (p.id != ID) {
-        io.to(p.id).emit("player disqualified", player, ms, guessesLeft);
+        io.to(p.id).emit("player round result", result);
       }
     }
 
@@ -379,32 +302,33 @@ io.on('connection', (socket) => {
 
     let game = gamesById[player.gameId];
 
-    if (game) {
-      // remove from list of game players
-      game.players = game.players.filter(p => !(p.id == ID));
+    if (!game) return;
 
-      // Check if this player has results in this game's current round
-      if (game.roundResults.filter(r => r.player.id == ID)) {
-        // if found, remove it
-        game.roundResults = game.roundResults.filter(r => r.player.id != ID);
-      }
 
-      // socket should leave the room
-      socket.leave(getRoomId(game.id));
+    // remove from list of game players
+    game.players = game.players.filter(p => !(p.id == ID));
 
-      io.to(getRoomId(game.id)).emit("player left game", player);
+    // Check if this player has results in this game's current round
+    if (game.roundResults.filter(r => r.player.id == ID)) {
+      // if found, remove it
+      game.roundResults = game.roundResults.filter(r => r.player.id != ID);
+    }
 
-      // Delete game if no players left
-      if (game.players.length == 0) {
-        games = games.filter(g => !(g.id = game.id));
-        gamesById[game.id] = undefined;
-        console.log("Game", game.id, "deleted");
-      }
-      else {
-        let newOwner = game.players[0];
-        newOwner.isOwner = true;
-        io.to(newOwner.id).emit("now owner");
-      }
+    // socket should leave the room
+    socket.leave(getRoomId(game.id));
+
+    io.to(getRoomId(game.id)).emit("player left game", player);
+
+    // Delete game if no players left
+    if (game.players.length == 0) {
+      games = games.filter(g => !(g.id = game.id));
+      gamesById[game.id] = undefined;
+      console.log("Game", game.id, "deleted");
+    }
+    else {
+      let newOwner = game.players[0];
+      newOwner.isOwner = true;
+      io.to(newOwner.id).emit("now owner");
     }
 
     console.log(ID, "disconnected");
@@ -418,10 +342,8 @@ server.listen(3000, () => {
 
 
 function endRound(game) {
-  let res = game.roundResults;
-
   // sort based on results (correct and fastest at top)
-  res.sort(function(a, b) {
+  game.roundResults.sort(function(a, b) {
     if (a.result == "correct") {
       if (b.result == "correct") {
         return a.time - b.time;
@@ -438,16 +360,20 @@ function endRound(game) {
   });
 
 
-  for (let i = 0; i < res.length; i++) {
-    if (res[i].result == "correct") {
-      let points = Math.round(1000 * (1 - res[i].time / (game.settings.listenTime * 1000)));
-      res[i].score = points;
-      res[i].player.score += points;
+  for (let i = 0; i < game.roundResults.length; i++) {
+    if (game.roundResults[i].result == "correct") {
+      let points = Math.round(1000 * (1 - game.roundResults[i].time / (game.settings.listenTime * 1000)));
+      game.roundResults[i].score = points;
     }
     else {
-      res[i].score = 0;
+      game.roundResults[i].score = 0;
     }
   }
 
-  io.to(getRoomId(game.id)).emit("round done", res);
+  game.cumResults.push(game.roundResults);
+  for (let key of Object.keys(game.roundResultsById)) {
+    game.cumResultsById[key].push(game.roundResultsById[key]);
+  }
+
+  io.to(getRoomId(game.id)).emit("round done", game.roundResults, game.roundResultsById);
 }

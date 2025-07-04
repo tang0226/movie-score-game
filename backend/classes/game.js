@@ -8,6 +8,9 @@ class Game {
     this.inProgress = false;
     this.roundInProgress = false;
     this.roundResults = [];
+    this.roundResultsById = {};
+    this.cumResults = [];
+    this.cumResultsById = {};
   }
 
   initSettings(settings) {
@@ -24,6 +27,7 @@ class Game {
 
   addPlayer(player) {
     this.players.push(player);
+    this.cumResultsById[player.id] = [];
     player.gameId = this.id;
     player.score = 0;
     player.place = 1;
