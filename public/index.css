@@ -125,6 +125,7 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-align: center;
 }
 
 #yt-player {
@@ -172,7 +173,7 @@ select {
 }
 
 .small-text {
-  font-size: 1em;
+  font-size: 1.2em;
 }
 
 .intro-header {
@@ -203,6 +204,18 @@ select {
   justify-content: center;
   align-items: center;
   text-align: center;
+  padding: 10px;
+}
+
+.player-card-name {
+  width: 100%;
+  word-wrap: break-word;
+}
+
+.player-card-place {
+  position: absolute;
+  left: 5px;
+  top: 5px;
 }
 
 .tile {

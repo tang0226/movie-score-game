@@ -210,8 +210,8 @@ var game = {
   cumResultsById: {},
 };
 
-// Stores information about the ui, including element ids related to the game
-var ui = { quitButtonActive: false, wrongGuessIds: [] };
+// Stores information about the ui, including elements and ids related to gameplay
+var ui = { quitButtonActive: false, wrongGuessIds: []};
 
 const TIME_DP = 2;
 function msToS(ms) {
@@ -230,19 +230,14 @@ function resetGameUI() {
   log.innerHTML = "<div>Welcome to ScoreGame!</div>";
 }
 
-/*
-function createPlayerCard(pl) {
+function addPlayerCard(name = "") {
+  let numCards = game.players.length;
   let card = document.createElement("div");
-  card.id = getPlayerCardId(pl.id);
   card.classList.add("player-card");
 
   let placeEle = document.createElement("div");
-  placeEle.id = getPlayerPlaceId(pl);
-  placeEle.innerText = `${pl.place}`;
-  placeEle.style.position = "absolute";
-  placeEle.style.left = "0px";
-  placeEle.style.top = "0px";
-  placeEle.classList.add("text");
+  placeEle.innerText = "1";
+  placeEle.classList.add("small-text", "player-card-place");
 
   card.appendChild(placeEle);
 
@@ -250,20 +245,38 @@ function createPlayerCard(pl) {
   contentEle.classList.add("player-card-content");
 
   let nameEle = document.createElement("div");
-  nameEle.innerText = pl.name;
-  nameEle.classList.add("text");
-  
-  let pointsEle = document.createElement("div");
-  pointsEle.innerText = `${pl.score} points`;
-  pointsEle.classList.add("text");
+  nameEle.innerText = name;
+  nameEle.classList.add("text", "player-card-name");
+
+  let scoreEle = document.createElement("div");
+  scoreEle.innerText = "0 points";
+  scoreEle.classList.add("text", "player-card-score");
 
   contentEle.appendChild(nameEle);
-  contentEle.appendChild(pointsEle);
+  contentEle.appendChild(scoreEle);
 
   card.appendChild(contentEle);
-  
-  return card;
-}*/
+
+  playerList.appendChild(card);
+}
+
+function updatePlayerList(players) {
+  players.sort((a, b) => {
+    if (a.score > b.score) return -1;
+    if (a.score < b.score) return 1;
+    return 0;
+  });
+
+  let lastScore, currPlace = 1;
+  for (let i = 0; i < players.length; i++) {
+    let pl = players[i];
+    currPlace = pl.score == lastScore ? currPlace : i + 1;
+    let card = playerList.children[i];
+    card.querySelector(".player-card-name").innerText = pl.name;
+    card.querySelector(".player-card-score").innerText = `${pl.score} points`;
+    card.querySelector(".player-card-place").innerText = currPlace;
+  }
+}
 
 function logMessage(msg, color = "info") {
   let div = document.createElement("div");
@@ -749,6 +762,7 @@ socket.on("game created", (gameObj, id) => {
   // Add name to initial player list (element and array)
   // playerList.appendChild(createPlayerCard(gameObj.players[0]));
   game.players = [gameObj.players[0]];
+  addPlayerCard(gameObj.players[0].name);
 
   game.playersById = {};
   game.playersById[gameObj.players[0].id] = gameObj.players[0];
@@ -799,6 +813,7 @@ socket.on("game joined", (gameObj, id) => {
   for (let pl of gameObj.players) {
     game.playersById[pl.id] = pl;
     game.cumResultsById[pl.id] = [];
+    addPlayerCard(pl.name);
   }
 
   game.round = 0;
@@ -810,6 +825,8 @@ socket.on("player joined game", (pl) => {
   game.players.push(pl);
   game.playersById[pl.id] = pl;
   game.cumResultsById[pl.id] = [];
+  
+  addPlayerCard(pl.name);
 
   logMessage(`${pl.name} joined the game.`);
 });
@@ -820,6 +837,10 @@ socket.on("player left game", (pl) => {
   game.players = game.players.filter((p) => p.id != pl.id);
   delete game.playersById[pl.id];
   delete game.cumResultsById[pl.id];
+
+  // Remove a card from the list, then update the list content
+  playerList.removeChild(playerList.children[0]);
+  updatePlayerList(game.players);
 
   logMessage(`${pl.name} left the game.`);
 });
@@ -1001,6 +1022,7 @@ socket.on("round done", (resArr, resById) => {
   }
 
   console.log(game.players);
+  updatePlayerList(game.players);
 
   resetRoundVariables();
 });
