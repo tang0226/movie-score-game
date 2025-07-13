@@ -14,9 +14,9 @@ body {
 
 button {
   color: black;
-  font-size: 1.5em;
-  height: 50px;
-  border-radius: 25px;
+  font-size: 1.5rem;
+  height: 3.125rem;
+  border-radius: 1.5rem;
   background-color: gray;
   border: none;
 }
@@ -29,13 +29,8 @@ button:active {
   background-color: rgb(200, 200, 200);
 }
 
-progress {
-  width: 400px;
-  height: 30px;
-}
-
 input[type="text"] {
-  font-size: 1.2em;
+  font-size: 1.2rem;
   background-color: #00000000;
 }
 
@@ -63,9 +58,11 @@ select {
 }
 
 #game-view {
+  width: 100vw;
+  height: 100vh;
   display: grid;
-  grid-template-columns: minmax(100px, 20vw) minmax(100px, 60vw) minmax(100px, 20vw);
-  grid-template-rows: 50px calc(100vh - 50px);
+  grid-template-columns: 1fr 3fr 1fr;
+  grid-template-rows: min-content 1fr;
 }
 
 #game-header {
@@ -75,15 +72,17 @@ select {
   flex-direction: row;
   justify-content: center;
   border-bottom: 1px solid gray;
+  padding: 0.5rem;
 }
 
 #game-header-text {
-  font-size: 45px;
+  font-size: 3rem;
 }
 
-/*#quit-button {
-  margin-right: auto;
-}*/
+#quit-button {
+  position: absolute;
+  right: 0.5rem;
+}
 
 #player-list {
   grid-row: 2;
@@ -96,7 +95,7 @@ select {
   border-right: 1px solid gray;
   border-left: 1px solid gray;
 
-  padding: 20px 50px 50px 50px;
+  padding: 20px 20px 0px 20px;
 
   overflow-y: auto;
 
@@ -114,7 +113,7 @@ select {
 
 #log > div {
   margin: 5px;
-  font-size: 1.2em;
+  font-size: 1.2rem;
 }
 
 #settings-section {
@@ -169,20 +168,20 @@ select {
 }
 
 .text {
-  font-size: 1.5em;
+  font-size: 1.5rem;
 }
 
 .small-text {
-  font-size: 1.2em;
+  font-size: 1.2rem;
 }
 
 .intro-header {
-  font-size: 4em;
-  line-height: 0.5em;
+  font-size: 4rem;
+  line-height: 0.5rem;
 }
 
 .space {
-  height: 10px;
+  height: 0.625rem;
 }
 
 .inline {
@@ -232,7 +231,7 @@ select {
 
 .tile-overlay {
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 1.2em;
+  font-size: 1.2rem;
   
   display: flex;
   justify-content: center;
@@ -270,4 +269,58 @@ select {
 .tile-overlay-correct {
   background: url("images/tile-check.png");
   background-size: var(--tile-size);
+}
+
+/* Mobile aspect ratios */
+@media only screen and (max-aspect-ratio: 2/3) {
+  #game-view {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: min-content 1fr 1fr;
+  }
+
+  #game-header {
+    grid-row: 1;
+    grid-column: 1 / 3;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    border-bottom: 1px solid gray;
+    padding: 0.5rem;
+  }
+
+  #game-header-text {
+    font-size: 3rem;
+  }
+
+  #quit-button {
+    position: absolute;
+    right: 0.5rem;
+  }
+
+  #player-list {
+    grid-row: 3;
+    grid-column: 1;
+    border: 1px solid gray;
+  }
+
+  #game-ui {
+    grid-row: 2;
+    grid-column: 1 / 3;
+    border-right: 1px solid gray;
+    border-left: 1px solid gray;
+
+    padding: 20px 20px 0px 20px;
+
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #log {
+    grid-row: 3;
+    grid-column: 2;
+    border: 1px solid gray;
+  }
 }
