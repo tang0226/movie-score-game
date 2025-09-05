@@ -91,7 +91,7 @@ function onPlayerStateChange(event) {
   console.log(event.data, (time - lastStateTime) / 1000);
   lastStateTime = time;
   switch(event.data) {
-    case 1:
+    case 1: // playing
       ytPlayer.stretchStartTime = performance.now();
 
       if (!ytPlayer.songBuffering) {
@@ -104,10 +104,10 @@ function onPlayerStateChange(event) {
       roundStatusEle.innerText = "Song playing...";
       ytPlayer.songPlaying = true;
       break;
-    case 2:
+    case 2: // paused
       YT_PLAYER.playVideo();
       break;
-    case 3:
+    case 3: // buffering
       if (ytPlayer.songPlaying) {
         console.warn("BUFFERING");
         ytPlayer.cumStretchTime += performance.now() - ytPlayer.stretchStartTime;
@@ -134,7 +134,7 @@ var ytPlayer = {
   songBuffering: false,
 };
 
-var progressBarInterval;
+var songProgressBarInterval;
 
 
 // iife . . .
@@ -166,11 +166,11 @@ var listenTimeInput = document.getElementById("listen-time-input");
 var guessesInput = document.getElementById("guesses-input");
 var startButton = document.getElementById("start-game");
 
-var settingsInputs = [gameEndTypeInput, roundsInput, pointsInput, listenTimeInput, guessesInput, startButton];
+var gameSettingsInputs = [gameEndTypeInput, roundsInput, pointsInput, listenTimeInput, guessesInput, startButton];
 
 // Gameplay section
 var nextButton = document.getElementById("next");
-var progressBar = document.getElementById("progress-bar").children[0];
+var songProgressBar = document.getElementById("progress-bar").children[0];
 var volumeSlider = document.getElementById("volume-slider");
 window.roundStatusEle = document.getElementById("round-status");
 var guessesLeftEle = document.getElementById("guesses-left");
@@ -211,21 +211,26 @@ var game = {
 };
 
 // Stores information about the ui, including elements and ids related to gameplay
-var ui = { quitButtonActive: false, wrongGuessIds: []};
+var ui = {
+  currView: "intro",
+  quitButtonActive: false,
+  wrongGuessIds: [],
+  correctGuessId: null,
+};
 
 const TIME_DP = 2;
-function msToS(ms) {
+function msToDisplayS(ms) {
   return Math.round(ms / 1000 * 10 ** TIME_DP) / 10 ** TIME_DP
 }
 
 
 // HTML and DOM functions
 
-// Clears the player list and tiles section
+// Resets the game view for when the next game starts
 function resetGameUI() {
   playerList.innerHTML = "";
   tilesSection.innerHTML = "";
-  progressBar.style.width = "0px";
+  songProgressBar.style.width = "0px";
   guessesLeftEle.innerText = "";
   log.innerHTML = "<div>Welcome to ScoreGame!</div>";
 }
@@ -260,6 +265,7 @@ function addPlayerCard(name = "") {
   playerList.appendChild(card);
 }
 
+// Update displayed scores
 function updatePlayerList(players) {
   players.sort((a, b) => {
     if (a.score > b.score) return -1;
@@ -367,7 +373,7 @@ function initTilesSection(m) {
 
             overlayEle.classList.add("tile-overlay-correct");
             ui.correctGuessId = guessOverlayId;
-            let s = msToS(ms);
+            let s = msToDisplayS(ms);
             logMessage(`You guessed correctly in: ${s}s`, "success");
           }
           else {
@@ -462,8 +468,6 @@ function resetTiles() {
 
 // Preps the round and begins the countdown to play the song
 function startRound() {
-  stopSong();
-
   game.roundInProgress = true;
 
   player.gotCorrect = false;
@@ -480,24 +484,33 @@ function startRound() {
 
   logMessage(`Round ${game.round} starting!`);
 
-  countDown(3, startSong);
+  countdownRoundStart(3, startSong);
 }
 
 // Starts the song and progress bar
 function startSong() {
   YT_PLAYER.playVideo();
-  progressBarInterval = window.setInterval(updateProgressBar, 1000/60);
+  songProgressBarInterval = window.setInterval(updateSongProgress, 1000/60);
 }
 
 // Stops the video and progress bar
-function stopSong() {
+function endSong() {
   YT_PLAYER.stopVideo();
-  window.clearInterval(progressBarInterval);
+  window.clearInterval(songProgressBarInterval);
+  resetSongProgress();
   roundStatusEle.innerText = "Song done.";
+  
+  // Reset the ytPlayer object
+  ytPlayer = {
+    stretchStartTime: null,
+    cumStretchTime: 0,
+    songPlaying: false,
+    songBuffering: false,
+  };
 }
 
-// Second-counting utility function (temp?)
-function countDown(time) {
+// Start the next round after a certain amount of time
+function countdownRoundStart(time) {
   // Make sure the player didn't quit right after the countdown started.
   if (!player.joinedGame) {
     return;
@@ -508,14 +521,20 @@ function countDown(time) {
     startSong();
     return;
   }
-  setTimeout(countDown, 1000, time - 1);
+  setTimeout(countdownRoundStart, 1000, time - 1);
 }
 
-function updateProgressBar() {
+// 2 song progress bar functions
+
+function resetSongProgress() {
+  songProgressBar.style.width = "0px";
+}
+
+function updateSongProgress() {
   if (ytPlayer.songPlaying) {
     let t = getElapsedSongTime();
 
-    progressBar.style.width =
+    songProgressBar.style.width =
       (t / game.settings.listenTimeMs * 100).toString() + "%";
 
     if (t > game.settings.listenTimeMs) {
@@ -536,7 +555,7 @@ function updateProgressBar() {
         game.roundResults.push(roundRes);
         logMessage("You timed out.", "error");
       }
-      stopSong();
+      endSong();
     }
   }
 }
@@ -640,7 +659,7 @@ quitButton.addEventListener("click", function() {
     showEle(introView);
     
     // If a player's round is in progress, end it
-    stopSong();
+    endSong();
     resetRoundVariables();
 
     // Reset the game
@@ -743,7 +762,7 @@ socket.on("game created", (gameObj, id) => {
   player.isOwner = true;
 
   // Open all settings inputs
-  for (let input of settingsInputs) {
+  for (let input of gameSettingsInputs) {
     input.removeAttribute("disabled");
   }
   
@@ -783,7 +802,7 @@ socket.on("game joined", (gameObj, id) => {
   player.isOwner = false;
 
   // Block all settings inputs
-  for (let input of settingsInputs) {
+  for (let input of gameSettingsInputs) {
     input.setAttribute("disabled", true);
   }
 
@@ -838,7 +857,7 @@ socket.on("player left game", (pl) => {
   delete game.playersById[pl.id];
   delete game.cumResultsById[pl.id];
 
-  // Remove a card from the list, then update the list content
+  // Remove a card from the list, then update the list content to show the remaining players
   playerList.removeChild(playerList.children[0]);
   updatePlayerList(game.players);
 
@@ -877,7 +896,7 @@ socket.on("now owner", () => {
   if (ui.currView == "intro") return;
   player.isOwner = true;
   if (player.joinedGame && ui.currView == "gameSettings") {
-    for (let input of settingsInputs) {
+    for (let input of gameSettingsInputs) {
       input.removeAttribute("disabled");
     }
     showEle(startButton);
@@ -893,65 +912,12 @@ socket.on("game started", (gameObj) => {
   logMessage("The game has started!");
 });
 
-/**
-socket.on("player guessed correctly", (pl, ms, guessesLeft) => {
-  game.roundResults.push({
-    player: {
-      id: pl.id,
-      name: pl.name,
-    },
-    result: "correct",
-    guessesLeft: guessesLeft,
-    time: ms / 1000,
-  });
-  logMessage(`${pl.name}: ${msToS(ms)}s`, "success");
-});
-
-socket.on("player ran out of guesses", (pl, ms) => {
-  game.roundResults.push({
-    player: {
-      id: pl.id,
-      name: pl.name,
-    },
-    result: "ran out of guesses",
-    guessesLeft: 0,
-    time: ms,
-  });
-  logMessage(`${pl.name} ran out of guesses.`, "error");
-});
-
-socket.on("player timed out", (pl, guessesLeft) => {
-  game.roundResults.push({
-    player: {
-      id: pl.id,
-      name: pl.name,
-    },
-    result: "timeout",
-    guessesLeft: guessesLeft,
-    time: game.settings.listenTime,
-  });
-  logMessage(`${pl.name} timed out.`, "error");
-});
-
-socket.on("player disqualified", (pl, ms, guessesLeft) => {
-  game.roundResults.push({
-    player: {
-      id: pl.id,
-      name: pl.name,
-    },
-    result: "disqualified",
-    guessesLeft: guessesLeft,
-    time: ms,
-  });
-  logMessage(`${pl.name} was disqualified.`, "error");
-});
-*/
 
 socket.on("player round result", (res) => {
   game.roundResults.push(res);
   switch (res.result) {
     case "correct":
-      logMessage(`${res.player.name}: ${msToS(res.time)}s`, "success");
+      logMessage(`${res.player.name}: ${msToDisplayS(res.time)}s`, "success");
       break;
     case "ran out of guesses":
       logMessage(`${res.player.name} ran out of guesses.`, "error");
@@ -978,6 +944,9 @@ socket.on("movie data", (data) => {
 
 // when we receive data for the next round
 socket.on("next round", (data) => {
+  // End the current song
+  endSong();
+
   game.round++;
 
   game.currMovie = data.movie;
@@ -993,7 +962,7 @@ socket.on("next round", (data) => {
 
 socket.on("round done", (resArr, resById) => {
   console.log(resArr, resById);
-  stopSong();
+  endSong();
 
   logMessage("Round done.");
   logMessage(`Movie: ${game.currMovie.name}`);

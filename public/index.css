@@ -1,5 +1,5 @@
 :root {
-  --tile-size: 100px;
+  --tile-size: 6rem;
   --columns: 5;
   --log-text-info: black;
   --log-text-success: rgb(0, 143, 36);
@@ -95,7 +95,7 @@ select {
   border-right: 1px solid gray;
   border-left: 1px solid gray;
 
-  padding: 20px 20px 0px 20px;
+  padding: 1.25rem 1.25rem 0rem 1.25rem;
 
   overflow-y: auto;
 
@@ -112,7 +112,7 @@ select {
 }
 
 #log > div {
-  margin: 5px;
+  margin: 0.3rem;
   font-size: 1.2rem;
 }
 
@@ -139,7 +139,7 @@ select {
   height: auto;
   max-height: 75vh;
   overflow-y: auto;
-  padding-bottom: 10px;
+  padding-bottom: 0.75rem;
 
   display: flex;
   flex-direction: row;
@@ -150,7 +150,7 @@ select {
 #progress-bar {
   position: relative;
   width: 100%;
-  height: 30px;
+  height: 2rem;
   border: 2px solid black;
 }
 
@@ -193,7 +193,7 @@ select {
   position: relative;
   border: 1px solid gray;
   width: inherit;
-  margin-bottom: 5px;
+  margin-bottom: 0.25rem;
 }
 
 .player-card-content {
@@ -203,7 +203,7 @@ select {
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 10px;
+  padding: 0.7rem;
 }
 
 .player-card-name {
@@ -213,8 +213,8 @@ select {
 
 .player-card-place {
   position: absolute;
-  left: 5px;
-  top: 5px;
+  left: 0.25rem;
+  top: 0.25rem;
 }
 
 .tile {
@@ -272,18 +272,15 @@ select {
 }
 
 /* Mobile aspect ratios */
-@media only screen and (max-aspect-ratio: 2/3) {
+@media only screen and (max-width: 70rem) {
   #game-view {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: min-content 1fr 1fr;
+    grid-template-rows: min-content 1.5fr 1fr;
   }
 
   #game-header {
     grid-row: 1;
     grid-column: 1 / 3;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
     border-bottom: 1px solid gray;
     padding: 0.5rem;
   }
@@ -309,13 +306,7 @@ select {
     border-right: 1px solid gray;
     border-left: 1px solid gray;
 
-    padding: 20px 20px 0px 20px;
-
-    overflow-y: auto;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    padding: 1.25rem 1.25rem 0rem 1.25rem;
   }
 
   #log {

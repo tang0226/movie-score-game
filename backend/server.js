@@ -306,7 +306,7 @@ io.on('connection', (socket) => {
 
 
     // remove from list of game players
-    game.players = game.players.filter(p => !(p.id == ID));
+    game.players = game.players.filter(p => p.id != ID);
 
     // Check if this player has results in this game's current round
     if (game.roundResults.filter(r => r.player.id == ID)) {
