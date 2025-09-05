@@ -277,6 +277,7 @@ function updatePlayerList(players) {
   for (let i = 0; i < players.length; i++) {
     let pl = players[i];
     currPlace = pl.score == lastScore ? currPlace : i + 1;
+    lastScore = pl.score;
     let card = playerList.children[i];
     card.querySelector(".player-card-name").innerText = pl.name;
     card.querySelector(".player-card-score").innerText = `${pl.score} points`;
@@ -864,6 +865,23 @@ socket.on("player left game", (pl) => {
   logMessage(`${pl.name} left the game.`);
 });
 
+// when another player is made the owner
+socket.on("new owner", (pl) => {
+  if (pl.id == player.id) {
+    player.isOwner = true;
+    if (player.joinedGame && ui.currView == "gameSettings") {
+      for (let input of gameSettingsInputs) {
+        input.removeAttribute("disabled");
+      }
+      showEle(startButton);
+      logMessage("You are now the room owner.");
+    }
+  }
+  else {
+    logMessage(`${pl.name} is now the room owner.`);
+  }
+});
+
 socket.on("game setting changed", (setting, val) => {
   switch (setting) {
     case "endConditionType":
@@ -890,18 +908,6 @@ socket.on("game setting changed", (setting, val) => {
       game.settings.guesses = val;
   }
   console.log(game.settings);
-});
-
-socket.on("now owner", () => {
-  if (ui.currView == "intro") return;
-  player.isOwner = true;
-  if (player.joinedGame && ui.currView == "gameSettings") {
-    for (let input of gameSettingsInputs) {
-      input.removeAttribute("disabled");
-    }
-    showEle(startButton);
-    logMessage("You are now the room owner.");
-  }
 });
 
 socket.on("game started", (gameObj) => {

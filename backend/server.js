@@ -180,9 +180,12 @@ io.on('connection', (socket) => {
       console.log("Game", game.id, "deleted");
     }
     else {
-      let newOwner = game.players[0];
-      newOwner.isOwner = true;
-      io.to(newOwner.id).emit("now owner");
+      // If the leaving player was the room owner, pick a new one
+      if (player.isOwner) {
+        let newOwner = game.players[0];
+        newOwner.isOwner = true;
+        io.to(getRoomId(game.id)).emit("new owner", newOwner);
+      }
     }
   });
 
@@ -314,21 +317,24 @@ io.on('connection', (socket) => {
       game.roundResults = game.roundResults.filter(r => r.player.id != ID);
     }
 
-    // socket should leave the room
+    // remove socket from the room
     socket.leave(getRoomId(game.id));
 
     io.to(getRoomId(game.id)).emit("player left game", player);
-
-    // Delete game if no players left
+    
     if (game.players.length == 0) {
+      // Delete game if no players left
       games = games.filter(g => !(g.id = game.id));
       gamesById[game.id] = undefined;
       console.log("Game", game.id, "deleted");
     }
     else {
-      let newOwner = game.players[0];
-      newOwner.isOwner = true;
-      io.to(newOwner.id).emit("now owner");
+      // If the disconnected player was the owner, pick a new one
+      if (player.isOwner) {
+        let newOwner = game.players[0];
+        newOwner.isOwner = true;
+        io.to(getRoomId(game.id)).emit("new owner", newOwner);
+      }
     }
 
     console.log(ID, "disconnected");
