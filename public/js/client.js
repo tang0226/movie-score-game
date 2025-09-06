@@ -16,15 +16,16 @@ Handle disconnections:
  * If a player later joins with the same IP Address and name(?), treat them as the disconnected player. They can join the next round that starts, and also mkae sure that all other players are notified from the server.
  * A reconnected player can have round results marked as "disconnected" with no points scored.
  * If all players in a game disconnect, maybe wait a certain amount of time? If no players return, then delete the game.
+ * socket timeout() function seems promising
 
 Smaller:
-Refactor player cards and points displays
-Store detailed results in client session (for client-side statistics and visualizations)
+v Refactor player cards and points displays
+v Store detailed results in client session (for client-side statistics and visualizations)
 Allow players to join mid-game
  * If rounds have already been played, create round-results for previous round, marked as "absent" or something of the like.
  * Player cards will be modified
-Fix Quit button layout
-Bug: "Song playing..." displays in between rounds
+v Fix Quit button layout
+v Bug: "Song playing..." displays in between rounds
 
 Larger:
 Movie picking
@@ -35,24 +36,11 @@ Visualizations and statistics tables
  * Canvas time, baby!
 
 Long term:
+Movie picking / filtering (by composer, studio, genre, score style, etc.)
 secrecy (options to show when ppl guess, what they guessed, when they ran out of guesses, or nothing at all!)
 player colors? avatars?
 movie "drafting"? alternating picking movies for a set?
 Song filtering? (lyrics / no lyrics)
-
-
-IDEAS FOR LAYOUT:
-v HUD, volume, timing bar, and movie tiles in center
-v Left: Scoreboard (name: points), with progress-bar-style graphing of relative points.
-v Right: log (players joining, leaving, guessing, dq-ing, winning)
-
-Main structure:
-Full-screen div, display flex, align-items center vertically
-within this full-screen div, have a centered main container
-This centered main container can simply be a display block (intro-view)
-
-OR it can be a display flex containing the three main columns (game and gameplay views)
-
 */
 
 // Youtube iframe API
