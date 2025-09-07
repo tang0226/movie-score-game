@@ -463,7 +463,6 @@ function endSong() {
   YT_PLAYER.stopVideo();
   window.clearInterval(songProgressBarInterval);
   resetSongProgress();
-  roundStatusEle.innerText = "Round done.";
   
   // Reset the ytPlayer object
   ytPlayer = Object.assign(ytPlayer, {
@@ -542,6 +541,7 @@ function updateSongProgress() {
         logMessage("You timed out.", "error");
       }
       endSong();
+      roundStatusEle.innerText = "Round done.";
     }
   }
 }
@@ -639,6 +639,7 @@ quitButton.addEventListener("click", function() {
     
     // If a player's round is in progress, end it
     endSong();
+    roundStatusEle.innerText = "";
     resetRoundVariables();
 
     // Reset the game
@@ -949,6 +950,7 @@ socket.on("next round", (data) => {
 
 socket.on("round done", (resArr, resById) => {
   endSong();
+  roundStatusEle.innerText = "Round done";
 
   logMessage("Round done.");
   logMessage(`Movie: ${game.currMovie.name}`);
