@@ -108,18 +108,16 @@ function onPlayerStateChange(event) {
 }
 
 
-
-
-function getElapsedSongTime() {
-  return performance.now() - ytPlayer.stretchStartTime + ytPlayer.cumStretchTime;
-}
-
 // Object storing data about the YT player status and play time.
 var ytPlayer = {
   stretchStartTime: null,
   cumStretchTime: 0,
   songPlaying: false,
   songBuffering: false,
+
+  getElapsedSongTime() {
+    return performance.now() - this.stretchStartTime + this.cumStretchTime;
+  },
 };
 
 var songProgressBarInterval;
@@ -212,8 +210,6 @@ function msToDisplayS(ms) {
 }
 
 
-// HTML and DOM functions
-
 // Resets the game view for when the next game starts
 function resetGameUI() {
   playerList.innerHTML = "";
@@ -222,6 +218,8 @@ function resetGameUI() {
   guessesLeftEle.innerText = "";
   log.innerHTML = "<div>Welcome to ScoreGame!</div>";
 }
+
+// Player list
 
 function addPlayerCard(name = "") {
   let numCards = game.players.length;
@@ -253,7 +251,6 @@ function addPlayerCard(name = "") {
   playerList.appendChild(card);
 }
 
-// Update displayed scores
 function updatePlayerList(players) {
   players.sort((a, b) => {
     if (a.score > b.score) return -1;
@@ -273,6 +270,7 @@ function updatePlayerList(players) {
   }
 }
 
+// Log
 function logMessage(msg, color = "info") {
   let div = document.createElement("div");
   div.textContent = msg;
@@ -281,34 +279,9 @@ function logMessage(msg, color = "info") {
   log.scrollTop = log.scrollHeight;
 }
 
+// Tiles
 function getTileOverlayId(imgId) {
   return imgId + "-tile";
-}
-
-// Update the displayed game settings
-function dispGameSettings(settings) {
-  console.log("Game settings:", settings);
-  gameEndTypeInput.value = settings.endCondition.type;
-  updateGameEndInput();
-  if (settings.endCondition.type == "rounds") {
-    roundsInput.value = settings.endCondition.value.toString();
-  }
-  else if (settings.endCondition.type == "points") {
-    pointsInput.value = settings.endCondition.value.toString();
-  }
-  listenTimeInput.value = settings.listenTime.toString();
-  guessesInput.value = settings.guesses.toString();
-}
-
-function updateGameEndInput() {
-    if (gameEndTypeInput.value == "rounds") {
-      hideEle(pointsInput);
-      showEle(roundsInput);
-    }
-    else if (gameEndTypeInput.value == "points") {
-      hideEle(roundsInput);
-      showEle(pointsInput);
-    }
 }
 
 function initTilesSection(m) {
@@ -342,7 +315,8 @@ function initTilesSection(m) {
           overlayEle.classList.add("tile-overlay-guessed");
           
           if (guessOverlayId == getTileOverlayId(game.currMovie.imageId)) {
-            let ms = getElapsedSongTime();
+            // Make sure to measure the elapsed time BEFORE ending the song
+            let ms = ytPlayer.getElapsedSongTime();
             
             player.roundDone = true;
             player.gotCorrect = true;
@@ -366,7 +340,7 @@ function initTilesSection(m) {
             logMessage(`You guessed correctly in: ${s}s`, "success");
           }
           else {
-            let time = getElapsedSongTime();
+            let time = ytPlayer.getElapsedSongTime();
             overlayEle.classList.add("tile-overlay-incorrect");
             ui.wrongGuessIds.push(guessOverlayId);
             if (player.guessesLeft == 0) {
@@ -395,6 +369,44 @@ function initTilesSection(m) {
     images.appendChild(tile);
   }
   tilesSection.appendChild(images);
+}
+
+function resetTiles() {
+  for (let id of ui.wrongGuessIds) {
+    let ele = document.getElementById(id)
+    ele.classList.remove("tile-overlay-incorrect", "tile-overlay-guessed");
+  }
+  ui.wrongGuessIds = [];
+  if (ui.correctGuessId) {
+    let ele = document.getElementById(ui.correctGuessId);
+    ele.classList.remove("tile-overlay-correct", "tile-overlay-guessed");
+  }
+  ui.correctGuessId = null;
+}
+
+// Update the displayed game settings
+function dispGameSettings(settings) {
+  gameEndTypeInput.value = settings.endCondition.type;
+  updateGameEndInput();
+  if (settings.endCondition.type == "rounds") {
+    roundsInput.value = settings.endCondition.value.toString();
+  }
+  else if (settings.endCondition.type == "points") {
+    pointsInput.value = settings.endCondition.value.toString();
+  }
+  listenTimeInput.value = settings.listenTime.toString();
+  guessesInput.value = settings.guesses.toString();
+}
+
+function updateGameEndInput() {
+    if (gameEndTypeInput.value == "rounds") {
+      hideEle(pointsInput);
+      showEle(roundsInput);
+    }
+    else if (gameEndTypeInput.value == "points") {
+      hideEle(roundsInput);
+      showEle(pointsInput);
+    }
 }
 
 function updateGuessesLeft() {
@@ -440,20 +452,27 @@ function resetRoundVariables() {
   player.DQed = null;
 }
 
-
-function resetTiles() {
-  for (let id of ui.wrongGuessIds) {
-    let ele = document.getElementById(id)
-    ele.classList.remove("tile-overlay-incorrect", "tile-overlay-guessed");
-  }
-  ui.wrongGuessIds = [];
-  if (ui.correctGuessId) {
-    let ele = document.getElementById(ui.correctGuessId);
-    ele.classList.remove("tile-overlay-correct", "tile-overlay-guessed");
-  }
-  ui.correctGuessId = null;
+// Starts the song and progress bar
+function startSong() {
+  YT_PLAYER.playVideo();
+  songProgressBarInterval = window.setInterval(updateSongProgress, 1000/60);
 }
 
+// Stops the song and progress bar
+function endSong() {
+  YT_PLAYER.stopVideo();
+  window.clearInterval(songProgressBarInterval);
+  resetSongProgress();
+  roundStatusEle.innerText = "Round done.";
+  
+  // Reset the ytPlayer object
+  ytPlayer = Object.assign(ytPlayer, {
+    stretchStartTime: null,
+    cumStretchTime: 0,
+    songPlaying: false,
+    songBuffering: false,
+  });
+}
 
 // Preps the round and begins the countdown to play the song
 function startRound() {
@@ -476,29 +495,7 @@ function startRound() {
   countdownRoundStart(3, startSong);
 }
 
-// Starts the song and progress bar
-function startSong() {
-  YT_PLAYER.playVideo();
-  songProgressBarInterval = window.setInterval(updateSongProgress, 1000/60);
-}
-
-// Stops the video and progress bar
-function endSong() {
-  YT_PLAYER.stopVideo();
-  window.clearInterval(songProgressBarInterval);
-  resetSongProgress();
-  roundStatusEle.innerText = "Song done.";
-  
-  // Reset the ytPlayer object
-  ytPlayer = {
-    stretchStartTime: null,
-    cumStretchTime: 0,
-    songPlaying: false,
-    songBuffering: false,
-  };
-}
-
-// Start the next round after a certain amount of time
+// Start the next song after a certain amount of time
 function countdownRoundStart(time) {
   // Make sure the player didn't quit right after the countdown started.
   if (!player.joinedGame) {
@@ -513,7 +510,7 @@ function countdownRoundStart(time) {
   setTimeout(countdownRoundStart, 1000, time - 1);
 }
 
-// 2 song progress bar functions
+// Song progress bar functions
 
 function resetSongProgress() {
   songProgressBar.style.width = "0px";
@@ -521,7 +518,7 @@ function resetSongProgress() {
 
 function updateSongProgress() {
   if (ytPlayer.songPlaying) {
-    let t = getElapsedSongTime();
+    let t = ytPlayer.getElapsedSongTime();
 
     songProgressBar.style.width =
       (t / game.settings.listenTimeMs * 100).toString() + "%";
@@ -619,6 +616,8 @@ guessesInput.addEventListener("change", function() {
 });
 
 
+// Buttons
+
 startButton.addEventListener("click", function() {
   socket.emit("start game");
 });
@@ -626,15 +625,6 @@ startButton.addEventListener("click", function() {
 // Start next round when next button clicked (temp)
 nextButton.addEventListener("click", function() {
   socket.emit("start next round");
-});
-
-// Volume listening
-volumeSlider.addEventListener("input", function() {
-  YT_PLAYER.setVolume(Number(volumeSlider.value));
-});
-
-volumeSlider.addEventListener("change", function() {
-  YT_PLAYER.setVolume(Number(volumeSlider.value));
 });
 
 quitButton.addEventListener("click", function() {
@@ -675,6 +665,17 @@ quitButton.addEventListener("click", function() {
   }
 });
 
+// Volume listening
+volumeSlider.addEventListener("input", function() {
+  YT_PLAYER.setVolume(Number(volumeSlider.value));
+});
+
+volumeSlider.addEventListener("change", function() {
+  YT_PLAYER.setVolume(Number(volumeSlider.value));
+});
+
+
+
 // DQing
 /*window.addEventListener("blur", function() {
   console.log("blur!", performance.now());
@@ -706,7 +707,7 @@ document.addEventListener("keydown", function(event) {
 
 function sendDQ() {
   if (game.roundInProgress) {
-    let time = getElapsedSongTime();
+    let time = ytPlayer.getElapsedSongTime();
 
     let roundRes = {
       player: {
@@ -783,11 +784,12 @@ socket.on("game created", (gameObj, id) => {
 
 // when we receive confirmation that a game was successfully joined:
 socket.on("game joined", (gameObj, id) => {
+  player.joinedGame = true;
+
   game.settings = gameObj.settings;
   dispGameSettings(game.settings);
 
   player.id = id;
-
   player.isOwner = false;
 
   // Block all settings inputs
@@ -807,12 +809,7 @@ socket.on("game joined", (gameObj, id) => {
   hideEle(introView);
   showEle(gameView);
 
-  player.joinedGame = true;
   ui.currView = "gameSettings";
-  
-  /*for (let pl of gameObj.players) {
-    playerList.appendChild(createPlayerCard(pl));
-  }*/
 
   game.players = gameObj.players;
   
@@ -829,7 +826,6 @@ socket.on("game joined", (gameObj, id) => {
 
 // when another player joins the game
 socket.on("player joined game", (pl) => {
-  //playerList.appendChild(createPlayerCard(pl));
   game.players.push(pl);
   game.playersById[pl.id] = pl;
   game.cumResultsById[pl.id] = [];
@@ -841,7 +837,6 @@ socket.on("player joined game", (pl) => {
 
 // when another player leaves the game
 socket.on("player left game", (pl) => {
-  //playerList.removeChild(document.getElementById(getPlayerCardId(pl.id)));
   game.players = game.players.filter((p) => p.id != pl.id);
   delete game.playersById[pl.id];
   delete game.cumResultsById[pl.id];
@@ -857,7 +852,7 @@ socket.on("player left game", (pl) => {
 socket.on("new owner", (pl) => {
   if (pl.id == player.id) {
     player.isOwner = true;
-    if (player.joinedGame && ui.currView == "gameSettings") {
+    if (player.joinedGame) {
       for (let input of gameSettingsInputs) {
         input.removeAttribute("disabled");
       }
@@ -895,11 +890,9 @@ socket.on("game setting changed", (setting, val) => {
       guessesInput.value = val.toString();
       game.settings.guesses = val;
   }
-  console.log(game.settings);
 });
 
 socket.on("game started", (gameObj) => {
-  console.log("Game started!:", gameObj);
   hideEle(settingsSection);
   showEle(gameplaySection);
   ui.currView = "gameplay";
@@ -955,7 +948,6 @@ socket.on("next round", (data) => {
 });
 
 socket.on("round done", (resArr, resById) => {
-  console.log(resArr, resById);
   endSong();
 
   logMessage("Round done.");

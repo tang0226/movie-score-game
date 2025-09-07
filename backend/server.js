@@ -289,6 +289,7 @@ io.on('connection', (socket) => {
 
     // check if all players have a result
     if (game.isRoundFinished()) {
+
       // if so, the round is done
       endRound(game);
     }
